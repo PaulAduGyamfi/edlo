@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edlo"
+version = "0.1.0" 
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi", "uvicorn[standard]", "pydantic-settings", 
+    "sqlalchemy>=2", "alembic", "psycopg[binary]", 
+    "python-multipart", "redis", "rq", "structlog", 
+    "openai", "faster-whisper"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx", "fakeredis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps", "apps.api*"]
+exclude = ["apps.web*", "tests*", "proof*", "evals*", "uploads*", "migrations*", "edlo*"]
+namespaces = false

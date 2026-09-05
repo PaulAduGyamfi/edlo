@@ -23,6 +23,7 @@ venv/
 *.sqlite3
 
 # Private Edlo media and generated artifacts
+*.egg-info/
 uploads/
 transcripts/
 *.wav
