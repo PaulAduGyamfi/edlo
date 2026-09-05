@@ -1,0 +1,42 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Python virtual environment
+.venv/
+venv/
+.venv*/
+
+# Secrets
+.env
+.env.local
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Private Edlo media and generated artifacts
+uploads/
+transcripts/
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+
+# React dependencies and builds
+node_modules/
+dist/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
