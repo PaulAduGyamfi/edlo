@@ -28,13 +28,15 @@ function App() {
     <div>
       <h1>EDLO</h1>
       <strong>Edlo's API Status: </strong>
-    {health ? `🟢 ${health.status}` : "🔴 Offline"}
+      <div><span>Environment: </span>{health ? `🛠️ ${health.environment}` : "⚠️ Offline"}</div>
+      <div><span>Server: </span>{health ? `🟢 ${health.status}` : "🔴 Offline"}</div>
   </div>
   )
 }
 
 interface HealthResponse {
   status: string;
+  environment: string;
 }
 
 export default App

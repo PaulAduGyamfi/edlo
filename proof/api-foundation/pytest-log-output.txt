@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/pauladu/edlo
+configfile: pyproject.toml
+plugins: asyncio-1.4.0, anyio-4.15.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/test_logging.py .                                                  [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/pauladu/edlo/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 1 passed, 1 warning in 0.93s =========================
