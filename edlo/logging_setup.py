@@ -1,6 +1,6 @@
 import logging, structlog
 
-def configure_logging(environment: str = "development") -> None:
+def configure_logging(environment: str) -> None:
     shared_processors = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
