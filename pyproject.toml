@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "httpx", "fakeredis"]
+dev = ["pytest", "pytest-asyncio", "httpx2", "fakeredis"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -22,6 +22,6 @@ addopts = "-q"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["apps", "apps.api*"]
+include = ["apps", "apps.api*", "edlo*"]
 exclude = ["apps.web*", "tests*", "proof*", "evals*", "uploads*", "migrations*", "edlo*"]
 namespaces = false
