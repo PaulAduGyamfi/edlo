@@ -37,6 +37,16 @@ class Episode(Base):
     idempotency_key: Mapped[str] = mapped_column(String(100), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+    stage_transitions: Mapped[list["StageTransition"]] = relationship(
+        back_populates="episode", cascade="all, delete-orphan"
+    )
+    audio_files: Mapped[list["AudioFile"]] = relationship(
+        back_populates="episode", cascade="all, delete-orphan"
+    )
+    plan_steps: Mapped[list["PlanStep"]] = relationship(
+        back_populates="episode", cascade="all, delete-orphan", order_by="PlanStep.position"
+    )
+
 
 class StageTransition(Base):
     __tablename__ = "stage_transitions"
@@ -49,6 +59,8 @@ class StageTransition(Base):
     reason: Mapped[str] = mapped_column(String(240))
     happened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+    episode: Mapped["Episode"] = relationship(back_populates="stage_transitions")
+
 
 class AudioFile(Base):
     __tablename__ = "audio_files"
@@ -56,13 +68,15 @@ class AudioFile(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     episode_id: Mapped[str] = mapped_column(ForeignKey("episodes.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(10))  # rough or final
+    kind: Mapped[str] = mapped_column(String(10))
     original_name: Mapped[str] = mapped_column(String(255))
     storage_key: Mapped[str] = mapped_column(String(255), unique=True)
     checksum: Mapped[str] = mapped_column(String(64), index=True)
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     first_downloaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    episode: Mapped["Episode"] = relationship(back_populates="audio_files")
 
 
 class PlanStep(Base):
@@ -75,3 +89,5 @@ class PlanStep(Base):
     label: Mapped[str] = mapped_column(String(100))
     completed_by: Mapped[str | None] = mapped_column(String(30))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    episode: Mapped["Episode"] = relationship(back_populates="plan_steps")
