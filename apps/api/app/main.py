@@ -2,14 +2,20 @@ import uuid
 import structlog
 from fastapi import FastAPI, Request
 from edlo.config import get_settings
-from edlo.logging_setup import configure_logging
+from edlo.logging_setup import configure_logging, log
+from contextlib import asynccontextmanager
+
 
 settings = get_settings()
 
-configure_logging(settings.environment)
-app = FastAPI(title="Edlo API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    configure_logging()
+    log.info("service_started", environment=settings.environment, version=app.version)
+    yield
+    log.info("service_stopping")
 
-log = structlog.get_logger()
+app = FastAPI(title="Edlo API", version="0.1.0", lifespan=lifespan)
 
 @app.middleware("http")
 async def add_run_id(request: Request, call_next):
@@ -25,3 +31,7 @@ async def add_run_id(request: Request, call_next):
 def health() -> dict[str, str]:
     log.info("health check called")
     return {"status" : "ok", "environment": settings.environment}
+
+@app.get("/version")
+def version() -> dict[str, str]:
+    return {"version": app.version, "environment": settings.environment}

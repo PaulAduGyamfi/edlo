@@ -71,6 +71,4 @@ def check_required_keys(self):
 
 @lru_cache
 def get_settings() -> Settings:
-    settings = Settings() 
-    settings.upload_dir.mkdir(parents=True, exist_ok=True) 
-    return settings
+    return Settings()

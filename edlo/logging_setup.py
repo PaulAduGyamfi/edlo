@@ -1,15 +1,21 @@
 import logging, structlog
+import sys
+from edlo.config import get_settings
 
-def configure_logging(environment: str) -> None:
-    shared_processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.processors.add_log_level,
-    ]
-    if environment == "development":
-        renderer = structlog.dev.ConsoleRenderer()
-    else:
-        renderer = structlog.processors.JSONRenderer()
+def configure_logging() -> None: 
+    settings = get_settings() 
+    structlog.configure(
+        processors=[
+        structlog.contextvars.merge_contextvars, 
+        structlog.stdlib.add_log_level, 
+        structlog.processors.TimeStamper(fmt="iso"), 
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer() if settings.environment != "development" else structlog.dev.ConsoleRenderer(),
+        ], 
+        wrapper_class=structlog.make_filtering_bound_logger(
+            getattr(logging, settings.log_level) 
+        ),
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout), 
+    )
 
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-    structlog.configure(processors=[*shared_processors, renderer])
+log = structlog.get_logger()

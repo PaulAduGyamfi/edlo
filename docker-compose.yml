@@ -1,0 +1,8 @@
+name: edlo
+services: 
+  api:
+    build: .
+    ports: ["8000:8000"] 
+    environment:
+      ENVIRONMENT: development 
+      LOG_LEVEL: INFO
