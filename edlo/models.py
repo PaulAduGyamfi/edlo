@@ -91,3 +91,29 @@ class PlanStep(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     episode: Mapped["Episode"] = relationship(back_populates="plan_steps")
+
+class Job(Base):
+    __tablename__ = "jobs"
+    __table_args__ = (UniqueConstraint("kind", "idempotency_key", name="uq_jobs_kind_idempotency_key"), Index("ix_jobs_status_created", "status", "created_at"))
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    kind: Mapped[str] = mapped_column(String(64))
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+
+    idempotency_key: Mapped[str] = mapped_column(String(128)) 
+    attempt: Mapped[int] = mapped_column(Integer, default=0) 
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_class: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
