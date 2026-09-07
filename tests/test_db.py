@@ -1,9 +1,10 @@
 from datetime import date
-from edlo.db import SessionLocal
+from edlo.db import get_sessionmaker
 from edlo.models import Episode
 
 def test_rollback_does_not_persist():
-    with SessionLocal() as session:
+    sessionmaker = get_sessionmaker()
+    with sessionmaker() as session:
         session.add(Episode(
             title="Fixture",
             recorded_on=date.today(),
@@ -12,7 +13,7 @@ def test_rollback_does_not_persist():
         ))
         session.rollback()
 
-    with SessionLocal() as session:
+    with sessionmaker() as session:
         assert session.query(Episode).filter_by(
             idempotency_key="rollback-123"
         ).one_or_none() is None

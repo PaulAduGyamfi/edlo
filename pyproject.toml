@@ -14,7 +14,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "httpx2", "fakeredis"]
+dev = [
+    "pytest", "pytest-asyncio", "httpx", "fakeredis",
+    "moto[s3,sqs]", "ruff", "mypy", "pytest-cov", "testcontainers[postgres]",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
