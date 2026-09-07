@@ -59,7 +59,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-@field_validator("user_api_keys", mode="before")
+"""@field_validator("user_api_keys", mode="before")
 @classmethod
 def parse_api_keys(cls, v):
     if isinstance(v, str):
@@ -73,4 +73,4 @@ def check_required_keys(self):
     missing = required - self.api_keys.keys()
     if missing:
         raise ValueError(f"Missing required api_keys: {missing}")
-    return self
+    return self"""
