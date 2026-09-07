@@ -1,8 +1,8 @@
 """create core workflow tables
 
-Revision ID: f65eb45d4871
+Revision ID: 8dc90732199f
 Revises: 
-Create Date: 2026-09-05 22:55:01.866495
+Create Date: 2026-09-06 23:37:39.779338
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f65eb45d4871'
+revision: str = '8dc90732199f'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -29,8 +29,8 @@ def upgrade() -> None:
     sa.Column('stage', sa.Enum('REGISTERED', 'MIXING', 'PLAN_READY', 'EDITING', 'REVIEW', 'PUBLISHED', name='stage'), nullable=False),
     sa.Column('idempotency_key', sa.String(length=100), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('idempotency_key')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_episodes')),
+    sa.UniqueConstraint('idempotency_key', name=op.f('uq_episodes_idempotency_key'))
     )
     op.create_index(op.f('ix_episodes_publish_on'), 'episodes', ['publish_on'], unique=False)
     op.create_table('audio_files',
@@ -43,10 +43,10 @@ def upgrade() -> None:
     sa.Column('size_bytes', sa.Integer(), nullable=False),
     sa.Column('uploaded_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('first_downloaded_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('episode_id', 'kind', 'checksum'),
-    sa.UniqueConstraint('storage_key')
+    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], name=op.f('fk_audio_files_episode_id_episodes')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_audio_files')),
+    sa.UniqueConstraint('episode_id', 'kind', 'checksum', name=op.f('uq_audio_files_episode_id')),
+    sa.UniqueConstraint('storage_key', name=op.f('uq_audio_files_storage_key'))
     )
     op.create_index(op.f('ix_audio_files_checksum'), 'audio_files', ['checksum'], unique=False)
     op.create_index(op.f('ix_audio_files_episode_id'), 'audio_files', ['episode_id'], unique=False)
@@ -57,9 +57,9 @@ def upgrade() -> None:
     sa.Column('label', sa.String(length=100), nullable=False),
     sa.Column('completed_by', sa.String(length=30), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('episode_id', 'position')
+    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], name=op.f('fk_plan_steps_episode_id_episodes')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_plan_steps')),
+    sa.UniqueConstraint('episode_id', 'position', name=op.f('uq_plan_steps_episode_id'))
     )
     op.create_index(op.f('ix_plan_steps_episode_id'), 'plan_steps', ['episode_id'], unique=False)
     op.create_table('stage_transitions',
@@ -70,8 +70,8 @@ def upgrade() -> None:
     sa.Column('actor', sa.String(length=30), nullable=False),
     sa.Column('reason', sa.String(length=240), nullable=False),
     sa.Column('happened_at', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['episode_id'], ['episodes.id'], name=op.f('fk_stage_transitions_episode_id_episodes')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_stage_transitions'))
     )
     op.create_index(op.f('ix_stage_transitions_episode_id'), 'stage_transitions', ['episode_id'], unique=False)
     # ### end Alembic commands ###
