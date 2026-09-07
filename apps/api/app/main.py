@@ -1,10 +1,11 @@
 import uuid
-import structlog
-from fastapi import FastAPI, Request
-from edlo.config import get_settings
-from edlo.logging_setup import configure_logging, log
 from contextlib import asynccontextmanager
 
+import structlog
+from fastapi import FastAPI, Request
+
+from edlo.config import get_settings
+from edlo.logging_setup import configure_logging, log
 
 settings = get_settings()
 

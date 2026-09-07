@@ -1,7 +1,9 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
-from pydantic import SecretStr, field_validator, model_validator, Field
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -68,7 +70,3 @@ def check_required_keys(self):
     if missing:
         raise ValueError(f"Missing required api_keys: {missing}")
     return self
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()

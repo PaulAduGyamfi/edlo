@@ -1,8 +1,9 @@
 from functools import lru_cache
-from collections.abc import Generator
-from sqlalchemy import create_engine, MetaData
+
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
 from edlo.config import get_settings
 
 NAMING_CONVENTION = {

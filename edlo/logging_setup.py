@@ -1,6 +1,10 @@
-import logging, structlog
+import logging
 import sys
+
+import structlog
+
 from edlo.config import get_settings
+
 
 def configure_logging() -> None: 
     settings = get_settings() 

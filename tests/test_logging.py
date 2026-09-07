@@ -1,8 +1,8 @@
-from structlog.testing import capture_logs
-from structlog.contextvars import merge_contextvars
 from fastapi.testclient import TestClient
-from apps.api.app.main import app
+from structlog.contextvars import merge_contextvars
+from structlog.testing import capture_logs
 
+from apps.api.app.main import app
 
 client = TestClient(app)
 
