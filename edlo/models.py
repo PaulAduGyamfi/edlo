@@ -54,7 +54,9 @@ class Episode(Base):
         back_populates="episode", cascade="all, delete-orphan"
     )
     plan_steps: Mapped[list["PlanStep"]] = relationship(
-        back_populates="episode", cascade="all, delete-orphan", order_by="PlanStep.position"
+        back_populates="episode",
+        cascade="all, delete-orphan",
+        order_by="PlanStep.position",
     )
 
 
@@ -84,7 +86,9 @@ class AudioFile(Base):
     checksum: Mapped[str] = mapped_column(String(64), index=True)
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    first_downloaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_downloaded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     episode: Mapped["Episode"] = relationship(back_populates="audio_files")
 
@@ -102,28 +106,38 @@ class PlanStep(Base):
 
     episode: Mapped["Episode"] = relationship(back_populates="plan_steps")
 
+
 class Job(Base):
     __tablename__ = "jobs"
-    __table_args__ = (UniqueConstraint("kind", "idempotency_key", name="uq_jobs_kind_idempotency_key"), Index("ix_jobs_status_created", "status", "created_at"))
+    __table_args__ = (
+        UniqueConstraint(
+            "kind", "idempotency_key", name="uq_jobs_kind_idempotency_key"
+        ),
+        Index("ix_jobs_status_created", "status", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     kind: Mapped[str] = mapped_column(String(64))
     episode_id: Mapped[str] = mapped_column(String(32), index=True)
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
 
-    idempotency_key: Mapped[str] = mapped_column(String(128)) 
-    attempt: Mapped[int] = mapped_column(Integer, default=0) 
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    attempt: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
 
     lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_class: Mapped[str | None] = mapped_column(String(128), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
