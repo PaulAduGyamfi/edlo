@@ -12,7 +12,7 @@ COPY pyproject.toml ./
 RUN pip install --upgrade pip && pip install .
 
 COPY --chown=edlo:edlo edlo/ ./edlo/ 
-COPY --chown=edlo:edlo apps/ ./apps
+COPY --chown=edlo:edlo apps/api/ ./apps/api/
 
 RUN mkdir -p /app/uploads && chown edlo:edlo /app/uploads
 

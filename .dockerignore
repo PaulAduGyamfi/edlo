@@ -9,3 +9,6 @@ __pycache__/
 tests/
 docs/
 *.md
+node_modules/
+apps/web/node_modules/
+apps/web/dist/
