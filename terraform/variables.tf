@@ -20,5 +20,5 @@ variable "api_desired_count" {
 }
 variable "github_repo" {
   type        = string
-  description = "owner/repo, used to scope the OIDC trust policy"
+  description = "The repo portion of the OIDC subject claim, including GitHub's numeric owner and repo IDs (e.g. owner@123/repo@456). Decode the token in a workflow run to find it."
 }
