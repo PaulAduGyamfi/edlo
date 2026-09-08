@@ -4,7 +4,7 @@ variable "region" {
 }
 variable "environment" {
   type    = string
-  default = "prod"
+  default = "production"
 }
 variable "image_tag" {
   type    = string
