@@ -23,8 +23,8 @@ data "aws_iam_policy_document" "github_assume" {
     }
 
     condition {
-      # THE most important line in this file. Without this condition, ANY
-      # GitHub repository on the internet can assume your deployment role.
+      # Without this condition, ANY GitHub repository on the internet
+      # can assume your deployment role.
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
