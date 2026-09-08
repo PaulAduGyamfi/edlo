@@ -74,6 +74,11 @@ resource "aws_iam_role_policy" "github_actions" {
         Action   = "iam:PassRole"
         Resource = [aws_iam_role.execution.arn, aws_iam_role.api_task.arn]
       },
+      {
+        Effect   = "Allow"
+        Action   = ["elasticloadbalancing:DescribeLoadBalancers"]
+        Resource = "*"
+      },
     ]
   })
 }
