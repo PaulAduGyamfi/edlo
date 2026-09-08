@@ -1,8 +1,9 @@
+from collections.abc import Generator
 from functools import lru_cache
 
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from edlo.config import get_settings
 
@@ -22,14 +23,24 @@ class Base(DeclarativeBase):
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
     settings = get_settings()
-    kwargs: dict = {"pool_pre_ping": True}
     if settings.database_url.startswith("sqlite"):
-        kwargs["connect_args"] = {"check_same_thread": False}
-    else:
-        kwargs |= {"pool_size": 5, "max_overflow": 5, "pool_recycle": 1800}
-    return create_engine(settings.database_url, **kwargs)
+        return create_engine(
+            settings.database_url, connect_args={"check_same_thread": False}
+        )
+    return create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+        pool_recycle=1800,
+    )
 
 
 @lru_cache(maxsize=1)
 def get_sessionmaker() -> sessionmaker:
     return sessionmaker(get_engine(), expire_on_commit=False)
+
+
+def get_session() -> Generator[Session, None, None]:
+    with get_sessionmaker()() as session:
+        yield session

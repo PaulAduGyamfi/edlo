@@ -3,10 +3,11 @@ import uuid
 from contextlib import asynccontextmanager
 
 import structlog
+from edlo.logging import configure_logging, log
 from fastapi import FastAPI, Request
 
+from apps.api.app.routes import episodes
 from edlo.config import get_settings
-from edlo.logging_setup import configure_logging, log
 
 settings = get_settings()
 
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Edlo API", version="0.1.0", lifespan=lifespan)
+app.include_router(episodes.router)
 
 
 @app.middleware("http")
