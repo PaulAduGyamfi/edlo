@@ -97,7 +97,7 @@ jobs:
       # Record what is live NOW, so rollback has a target.
       - id: prev
         run: |
-          echo "api=$(aws ecs describe-services --cluster edlo-prod \
+          echo "api=$(aws ecs describe-services --cluster edlo-production \
             --services edlo-api --query 'services[0].taskDefinition' \
             --output text)" >> $GITHUB_OUTPUT
 
@@ -118,15 +118,15 @@ jobs:
           NEW=$(aws ecs register-task-definition --cli-input-json file://new-td.json \
             --query 'taskDefinition.taskDefinitionArn' --output text)
 
-          aws ecs update-service --cluster edlo-prod --service edlo-api \
+          aws ecs update-service --cluster edlo-production --service edlo-api \
             --task-definition "$NEW"
 
       - name: Wait for stability
-        run: aws ecs wait services-stable --cluster edlo-prod --services edlo-api
+        run: aws ecs wait services-stable --cluster edlo-production --services edlo-api
 
       - name: Post-deploy smoke
         run: |
-          URL=http://$(aws elbv2 describe-load-balancers --names edlo-prod \
+          URL=http://$(aws elbv2 describe-load-balancers --names edlo-production \
             --query 'LoadBalancers[0].DNSName' --output text)
           curl -fsS "$URL/health"
           curl -fsS "$URL/version" | tee /tmp/v.json
@@ -135,7 +135,7 @@ jobs:
       - name: Roll back on failure
         if: failure()
         run: |
-          aws ecs update-service --cluster edlo-prod --service edlo-api \
+          aws ecs update-service --cluster edlo-production --service edlo-api \
             --task-definition ${{ steps.prev.outputs.api }}
-          aws ecs wait services-stable --cluster edlo-prod --services edlo-api
+          aws ecs wait services-stable --cluster edlo-production --services edlo-api
           echo "ROLLED BACK to ${{ steps.prev.outputs.api }}" >> $GITHUB_STEP_SUMMARY
