@@ -43,3 +43,7 @@ dist/
 
 # IDE
 .vscode/
+
+# IaC
+.terraform/
+*.tfstate*
