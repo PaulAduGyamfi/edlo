@@ -1,8 +1,11 @@
 FROM python:3.12-slim
 
+ARG GIT_SHA=unknown
+
 ENV PYTHONUNBUFFERED=1 \ 
     PYTHONDONTWRITEBYTECODE=1 \ 
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    GIT_SHA=${GIT_SHA}
 
 RUN useradd --create-home --uid 10001 edlo
 

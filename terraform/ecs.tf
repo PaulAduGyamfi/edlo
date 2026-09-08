@@ -80,4 +80,8 @@ resource "aws_ecs_service" "api" {
   health_check_grace_period_seconds = 30
 
   depends_on = [aws_lb_listener.http]
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }

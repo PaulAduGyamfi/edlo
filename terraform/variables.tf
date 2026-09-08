@@ -18,3 +18,7 @@ variable "api_desired_count" {
   type    = number
   default = 2
 }
+variable "github_repo" {
+  type        = string
+  description = "owner/repo, used to scope the OIDC trust policy"
+}

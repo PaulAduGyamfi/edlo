@@ -1,3 +1,4 @@
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -40,4 +41,8 @@ def health() -> dict[str, str]:
 
 @app.get("/version")
 def version() -> dict[str, str]:
-    return {"version": app.version, "environment": settings.environment}
+    return {
+        "version": app.version,
+        "environment": settings.environment,
+        "commit": os.getenv("GIT_SHA", "unknown"),
+    }
