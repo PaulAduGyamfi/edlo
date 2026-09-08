@@ -50,6 +50,13 @@ jobs:
       - id: meta
         run: echo "tag=${GITHUB_SHA::12}" >> $GITHUB_OUTPUT
 
+      - name: What is GitHub claiming
+        run: |
+          echo "repository: ${{ github.repository }}"
+          echo "ref:        ${{ github.ref }}"
+          echo "event:      ${{ github.event_name }}"
+          echo "role:       arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/edlo-github-actions"
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/edlo-github-actions
