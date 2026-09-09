@@ -16,6 +16,8 @@ RUN pip install --upgrade pip && pip install .
 
 COPY --chown=edlo:edlo edlo/ ./edlo/ 
 COPY --chown=edlo:edlo apps/api/ ./apps/api/
+COPY --chown=edlo:edlo migrations/ ./migrations/
+COPY --chown=edlo:edlo alembic.ini ./   
 
 RUN mkdir -p /app/uploads && chown edlo:edlo /app/uploads
 
