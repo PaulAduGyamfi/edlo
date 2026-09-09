@@ -1,10 +1,10 @@
 from datetime import date
 
-from edlo.logging import log
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from apps.api.app.deps import SessionDep
+from edlo.logging import log
 from edlo.models import Episode
 from edlo.services.schedule import ScheduleService, SlotInPast, SlotTaken
 
