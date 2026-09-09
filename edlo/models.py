@@ -3,7 +3,15 @@ import enum
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Date,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from edlo.db import Base
@@ -85,5 +93,23 @@ class PlanStep(Base):
     position: Mapped[int] = mapped_column(Integer)
     label: Mapped[str] = mapped_column(String(200))
     done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class AudioFile(Base):
+    __tablename__ = "audio_files"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # rough | final
+    storage_key: Mapped[str] = mapped_column(String(300))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    checksum: Mapped[str] = mapped_column(String(64))
+    uploaded_by: Mapped[str] = mapped_column(String(64))
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    first_downloaded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
