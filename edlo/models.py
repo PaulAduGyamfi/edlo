@@ -3,12 +3,7 @@ import enum
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
-from sqlalchemy import (
-    Date,
-    DateTime,
-    String,
-    UniqueConstraint,
-)
+from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from edlo.db import Base
@@ -44,6 +39,7 @@ class Episode(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+    stage: Mapped[str] = mapped_column(String(32), default="registered", index=True)
 
 
 class PostingSlot(Base):
@@ -57,3 +53,37 @@ class PostingSlot(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     slot_date: Mapped[date] = mapped_column(Date)
     episode_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class StageTransition(Base):
+    """
+    Append-only history. Never updated, never deleted.
+    """
+
+    __tablename__ = "stage_transitions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    from_stage: Mapped[str] = mapped_column(String(32))
+    to_stage: Mapped[str] = mapped_column(String(32))
+    actor_id: Mapped[str] = mapped_column(String(64))
+    actor_role: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    happened_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
+class PlanStep(Base):
+    """The one fixed editing checklist, same every episode."""
+
+    __tablename__ = "plan_steps"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str] = mapped_column(String(200))
+    done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

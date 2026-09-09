@@ -1,12 +1,14 @@
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from apps.api.app.deps import SessionDep
+from apps.api.app.deps import ActorDep, SessionDep
+from edlo.domain.roles import Role
 from edlo.logging import log
 from edlo.models import Episode
 from edlo.services.schedule import ScheduleService, SlotInPast, SlotTaken
+from edlo.services.workflow import IllegalTransition, NotPermitted, WorkflowService
 
 router = APIRouter(prefix="/episodes", tags=["episodes"])
 
@@ -38,7 +40,9 @@ def _view(ep: Episode, svc: ScheduleService) -> EpisodeView:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=EpisodeView)
-def create_episode(body: EpisodeCreate, db: SessionDep) -> EpisodeView:
+def create_episode(body: EpisodeCreate, db: SessionDep, actor: ActorDep) -> EpisodeView:
+    if actor.role not in (Role.AUDIO_EDITOR, Role.OWNER):
+        raise HTTPException(403, "only the audio editor registers episodes")
     svc = ScheduleService(db)
     ep = Episode(title=body.title, recorded_on=body.recorded_on)
     db.add(ep)
@@ -47,6 +51,49 @@ def create_episode(body: EpisodeCreate, db: SessionDep) -> EpisodeView:
     db.commit()
     log.info("episode_registered", episode_id=ep.id, publish_on=str(ep.publish_on))
     return _view(ep, svc)
+
+
+class StageChange(BaseModel):
+    to_stage: str
+    reason: str | None = None
+
+
+@router.post("/{episode_id}/stage", response_model=EpisodeView)
+def change_stage(
+    episode_id: str,
+    body: StageChange,
+    request: Request,
+    db: SessionDep,
+    actor: ActorDep,
+) -> EpisodeView:
+    ep = db.get(Episode, episode_id)
+    if ep is None:
+        raise HTTPException(404, "episode not found")
+    try:
+        WorkflowService(db).transition(
+            ep, body.to_stage, actor, body.reason, request.state.trace_id
+        )
+    except IllegalTransition as e:
+        raise HTTPException(409, str(e))
+    except NotPermitted as e:
+        raise HTTPException(403, str(e))
+    db.commit()
+    return _view(ep, ScheduleService(db))
+
+
+@router.get("/{episode_id}/history")
+def history(episode_id: str, db: SessionDep, actor: ActorDep):
+    return [
+        {
+            "from": t.from_stage,
+            "to": t.to_stage,
+            "actor": t.actor_id,
+            "role": t.actor_role,
+            "at": t.happened_at,
+            "reason": t.reason,
+        }
+        for t in WorkflowService(db).history(episode_id)
+    ]
 
 
 class SlotAssign(BaseModel):

@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from apps.api.app.deps import SessionDep  # noqa
 from apps.api.app.main import app
 from edlo.db import Base, get_session
+from edlo.domain.roles import Actor, Role
 
 
 @pytest.fixture
@@ -21,3 +22,18 @@ def client(db):
     app.dependency_overrides[get_session] = lambda: db
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def albert():
+    return Actor(id="u_albert", name="Albert", role=Role.AUDIO_EDITOR)
+
+
+@pytest.fixture
+def chris():
+    return Actor(id="u_chris", name="Chris", role=Role.VIDEO_EDITOR)
+
+
+@pytest.fixture
+def paul():
+    return Actor(id="u_paul", name="Paul", role=Role.OWNER)

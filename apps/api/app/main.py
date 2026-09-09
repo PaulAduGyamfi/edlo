@@ -1,10 +1,9 @@
 import os
-import uuid
 from contextlib import asynccontextmanager
 
-import structlog
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
+from apps.api.app.middleware import TraceMiddleware
 from apps.api.app.routes import episodes
 from edlo.config import get_settings
 from edlo.logging import configure_logging, log
@@ -22,17 +21,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Edlo API", version="0.1.0", lifespan=lifespan)
 app.include_router(episodes.router)
-
-
-@app.middleware("http")
-async def add_run_id(request: Request, call_next):
-    run_id = str(uuid.uuid4())
-    request.state.run_id = run_id
-    structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(run_id=run_id)
-    response = await call_next(request)
-    response.headers["X-Run-Id"] = run_id
-    return response
+app.add_middleware(TraceMiddleware)
 
 
 @app.get("/health")
