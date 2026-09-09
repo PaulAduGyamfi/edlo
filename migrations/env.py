@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, create_engine
 
 from edlo import models  # noqa
 from edlo.config import get_settings
@@ -29,7 +29,12 @@ target_metadata = Base.metadata
 
 # Override alembic.ini's static URL with the live value from Settings,
 # so migrations always target the same database the app actually uses.
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+def run_migrations_online() -> None:
+    connectable = create_engine(get_settings().database_url, poolclass=pool.NullPool)
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 def run_migrations_offline() -> None:

@@ -19,7 +19,7 @@ resource "aws_security_group" "db" {
 resource "random_password" "db" {
   length           = 32
   special          = true
-  override_special = "!#$%&*()-_=+[]{}<>?" # exclude chars that break a URL
+  override_special = "!#$&*()-_=+[]{}<>?" # exclude chars that break a URL
 }
 
 resource "aws_db_instance" "main" {
