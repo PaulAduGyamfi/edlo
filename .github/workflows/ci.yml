@@ -107,10 +107,21 @@ jobs:
           ACCOUNT=${{ secrets.AWS_ACCOUNT_ID }}
           IMAGE=$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/edlo-api:${{ needs.build-push.outputs.tag }}
 
+          aws ecs describe-task-definition --task-definition edlo-migrate \
+            --query taskDefinition > mtd.json
+
+          jq --arg IMG "$IMAGE" '
+            .containerDefinitions[0].image = $IMG
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                  .compatibilities, .registeredAt, .registeredBy)
+          ' mtd.json > new-mtd.json
+
+          MIGRATE_TD=$(aws ecs register-task-definition --cli-input-json file://new-mtd.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+
           TASK=$(aws ecs run-task --cluster $CLUSTER \
-            --task-definition edlo-migrate --launch-type FARGATE \
+            --task-definition "$MIGRATE_TD" --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.PRIVATE_SUBNETS }}],securityGroups=[${{ secrets.APP_SG }}]}" \
-            --overrides '{"containerOverrides":[{"name":"migrate","image":"'"$IMAGE"'"}]}' \
             --query 'tasks[0].taskArn' --output text)
 
           aws ecs wait tasks-stopped --cluster $CLUSTER --tasks "$TASK"

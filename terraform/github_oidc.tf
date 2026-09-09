@@ -66,6 +66,8 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecs:UpdateService",
           "ecs:DescribeTaskDefinition",
           "ecs:RegisterTaskDefinition",
+          "ecs:RunTask",
+          "ecs:DescribeTasks",
         ]
         Resource = "*"
       },
@@ -77,6 +79,11 @@ resource "aws_iam_role_policy" "github_actions" {
       {
         Effect   = "Allow"
         Action   = ["elasticloadbalancing:DescribeLoadBalancers"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents"]
         Resource = "*"
       },
     ]
