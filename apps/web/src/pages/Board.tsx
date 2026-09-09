@@ -25,25 +25,41 @@ const STAGES = [
   "published",
 ];
 
+const REFRESH_MS = 30_000;
+// How old the data may be before the board says so.
+const STALE_AFTER_MS = 90_000;
+
 export function Board() {
   const [episodes, setEpisodes] = useState<Episode[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setEpisodes(await api<Episode[]>("/episodes"));
-      setUpdatedAt(new Date());
-      setError(null);
-    } catch (e) {
-      if (isApiError(e)) setError(e);
-      else throw e;
-    }
-  }, []);
+  // Render-time clock, advanced by the refresh timer, so staleness is derived
+  // from state rather than from Date.now() during render.
+  const [now, setNow] = useState(() => Date.now());
+
+  const load = useCallback(
+    () =>
+      api<Episode[]>("/episodes").then(
+        (eps) => {
+          setEpisodes(eps);
+          setUpdatedAt(new Date());
+          setError(null);
+        },
+        (e: unknown) => {
+          if (isApiError(e)) setError(e);
+          else throw e;
+        },
+      ),
+    [],
+  );
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 30_000);
+    void load();
+    const t = setInterval(() => {
+      setNow(Date.now());
+      void load();
+    }, REFRESH_MS);
     return () => clearInterval(t);
   }, [load]);
 
@@ -51,7 +67,7 @@ export function Board() {
   if (!episodes) return <BoardSkeleton />;
   if (episodes.length === 0) return <EmptyState onCreate={load} />;
 
-  const stale = updatedAt && Date.now() - updatedAt.getTime() > 90_000;
+  const stale = updatedAt !== null && now - updatedAt.getTime() > STALE_AFTER_MS;
 
   return (
     <div className="board">
