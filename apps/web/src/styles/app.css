@@ -1,0 +1,424 @@
+/* App-level chrome: sign-in, splash, toasts, dialogs, forms, small shared bits. */
+
+.link {
+  font: inherit;
+  color: var(--accent-2);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-quiet {
+  color: var(--muted);
+}
+
+.chip-btn {
+  cursor: pointer;
+}
+
+.chip-btn:hover {
+  color: var(--text);
+  border-color: var(--line-2);
+}
+
+.chip-accent {
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border-color: transparent;
+}
+
+.chip-accent:hover {
+  color: var(--accent-ink);
+}
+
+.trace {
+  font: 500 10px/1 var(--mono);
+  color: var(--faint);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.error-detail strong {
+  color: var(--text);
+}
+
+/* ---------- who ---------- */
+
+.who-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.who-role {
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 2px;
+}
+
+.who-out {
+  font-size: 11px;
+  color: var(--faint);
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.who-out:hover {
+  color: var(--text);
+}
+
+.tab-episode {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- splash + sign-in ---------- */
+
+.splash {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.splash-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.signin {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.signin-card {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  background: var(--panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.signin-mark {
+  cursor: default;
+}
+
+.signin-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.signin-dev {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signin-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------- forms ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.field > span {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  font: 400 13px/1.3 var(--sans);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field input::placeholder {
+  color: var(--faint);
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- dialog ---------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.dialog {
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  background: #151412;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  box-shadow: var(--glass-inset), 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dialog-close,
+.toast-close {
+  font: 400 18px/1 var(--sans);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.dialog-close:hover,
+.toast-close:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+/* ---------- toasts ---------- */
+
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: rgba(20, 19, 17, 0.92);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  font-size: 12.5px;
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+.toast-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.toast-info .toast-dot {
+  color: #6fd8ff;
+}
+.toast-success .toast-dot {
+  color: var(--green);
+}
+.toast-error .toast-dot {
+  color: var(--red);
+}
+.toast-error {
+  border-color: rgba(255, 61, 46, 0.45);
+}
+
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toast-detail {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.toast-body .trace {
+  align-self: flex-start;
+  margin: 2px 0 0;
+}
+
+/* ---------- misc ---------- */
+
+.empty-state-note {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.error-panel.crash {
+  margin-top: 40px;
+}
+
+.banner .link {
+  color: inherit;
+}
+
+/* ---------- register: file pick + upload ---------- */
+
+.filepick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
+.filepick-on {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.filepick-name {
+  font-size: 11.5px;
+  color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.filepick-on .filepick-name {
+  color: var(--text);
+}
+
+.upload-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.upload-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.upload-status .progress {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.upload-status .progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 120ms linear;
+}

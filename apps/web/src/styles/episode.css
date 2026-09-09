@@ -1,0 +1,483 @@
+/* One episode: stage stepper and moves, audio hand-off, posting calendar, history. */
+
+.hero-skeleton {
+  min-height: 180px;
+}
+
+.stage-chip {
+  display: inline-block;
+  font: 600 9.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 4px 8px;
+  vertical-align: middle;
+}
+
+.stage-published {
+  color: #8a86ff;
+}
+.stage-blocked {
+  color: var(--yellow);
+  border-style: dashed;
+}
+
+.countdown-done {
+  color: #8a86ff;
+}
+.countdown-none {
+  color: var(--faint);
+}
+.countdown-overdue .countdown-n {
+  color: var(--red);
+}
+.countdown-due_soon .countdown-n {
+  color: var(--yellow);
+}
+
+/* ---------- layout ---------- */
+
+.ep-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.ep-main,
+.ep-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .ep-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.panel-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- stepper ---------- */
+
+.stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .stepper {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: #2a2a2a;
+}
+
+.step-done .step-bar {
+  background: #d9d5cf;
+}
+
+.step-now .step-bar {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(255, 122, 26, 0.5);
+}
+
+.stepper-blocked .step-bar {
+  background: repeating-linear-gradient(90deg, #3a3a3a 0 6px, transparent 6px 10px);
+}
+
+.step-label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.step-now .step-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.moves {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.move-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.moves-note {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+}
+
+.confirm > span {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* ---------- audio ---------- */
+
+.audio {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audio-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  box-shadow: var(--glass-inset);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+@media (max-width: 600px) {
+  .audio-row {
+    flex-wrap: wrap;
+  }
+}
+
+.audio-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audio-text strong {
+  font-size: 13.5px;
+}
+
+.audio-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.audio-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.audio-note {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.signal-unknown i {
+  background: var(--faint);
+}
+.signal-absent i {
+  background: #2a2a2a;
+}
+
+.progress {
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 120ms linear;
+}
+
+/* ---------- calendar ---------- */
+
+.cal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cal-month {
+  font: 800 16px/1 var(--display);
+  text-transform: uppercase;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-weekday {
+  font: 600 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: center;
+  padding-bottom: 4px;
+}
+
+.cal-cell {
+  --ring: transparent;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 44px;
+  padding: 5px 6px;
+  font: 500 11.5px/1 var(--sans);
+  color: var(--text);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--ring);
+  cursor: pointer;
+}
+
+.cal-cell:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--line-2);
+}
+
+.cal-cell:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.cal-cell:disabled {
+  cursor: default;
+}
+
+.cal-out {
+  opacity: 0.35;
+}
+
+.cal-past {
+  color: var(--faint);
+  background: transparent;
+}
+
+.cal-today .cal-day {
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cal-taken {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+
+.cal-suggest {
+  --ring: var(--accent);
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+.cal-mine {
+  --ring: transparent;
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border-color: transparent;
+  opacity: 1;
+}
+
+.cal-pending {
+  --ring: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.cal-tag {
+  font: 500 9px/1.2 var(--mono);
+  color: var(--faint);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-tag-mine {
+  color: var(--accent-ink);
+}
+
+.cal-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.cal-key {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.cal-key-mine {
+  background: var(--accent);
+}
+.cal-key-suggest {
+  border: 1px dashed var(--accent);
+}
+.cal-key-taken {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.cal-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-suggestions-label {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+/* ---------- history ---------- */
+
+.hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hist-item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 0 0 14px;
+}
+
+.hist-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-2);
+}
+
+.hist-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #d9d5cf;
+}
+
+.hist-blocked {
+  background: var(--yellow);
+}
+
+.hist-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hist-move {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hist-arrow {
+  margin: 0 6px;
+  color: var(--faint);
+}
+
+.hist-from {
+  color: var(--muted);
+}
+
+.hist-meta {
+  font: 500 10.5px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+.hist-reason {
+  font-size: 12px;
+  color: var(--muted);
+}

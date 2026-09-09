@@ -56,24 +56,15 @@
 
 /* ---------- BoardSkeleton ---------- */
 
-.board-skeleton .columns {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  overflow-x: auto;
-  padding: 2px;
-}
-
-.board-skeleton .column {
-  flex: 1 1 0;
-  min-width: 96px;
+.run-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 2px;
 }
 
 .skeleton {
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--panel-2);
   background-image: linear-gradient(
     100deg,
@@ -85,14 +76,8 @@
   animation: skeleton-sheen 1.5s ease-in-out infinite;
 }
 
-.skeleton-heading {
-  height: 10px;
-  width: 60%;
-  margin-bottom: 4px;
-}
-
-.skeleton-card {
-  height: 58px;
+.skeleton-row {
+  height: 64px;
   border: 1px solid var(--line);
 }
 
