@@ -1,42 +1,28 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import { useState } from "react";
+
+import "./styles/ui.css";
+import { ApprovalScreen } from "./screens/ApprovalScreen";
+import { ArchiveScreen } from "./screens/ArchiveScreen";
+import { CutScreen } from "./screens/CutScreen";
+import { ScheduleScreen } from "./screens/ScheduleScreen";
+import { SessionScreen } from "./screens/SessionScreen";
+import { type Screen } from "./screens/nav";
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [screen, go] = useState<Screen>("session");
 
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const response = await fetch('/health', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        const result = await response.json();
-        setHealth(result);
-      } catch (error: any) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    fetchHealth();
-  }, []);
-  
-
-  return (
-
-    <div>
-      <h1>EDLO</h1>
-      <strong>Edlo's API Status: </strong>
-      <div><span>Environment: </span>{health ? `🛠️ ${health.environment}` : "⚠️ Offline"}</div>
-      <div><span>Server: </span>{health ? `🟢 ${health.status}` : "🔴 Offline"}</div>
-  </div>
-  )
+  switch (screen) {
+    case "cut":
+      return <CutScreen go={go} />;
+    case "archive":
+      return <ArchiveScreen go={go} />;
+    case "schedule":
+      return <ScheduleScreen go={go} />;
+    case "approval":
+      return <ApprovalScreen go={go} />;
+    default:
+      return <SessionScreen go={go} />;
+  }
 }
 
-interface HealthResponse {
-  status: string;
-  environment: string;
-}
-
-export default App
+export default App;

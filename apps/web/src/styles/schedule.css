@@ -1,0 +1,192 @@
+/* Schedule: the board. Stage columns, countdown cards, posting slots. */
+
+.sched-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 36px 0 18px;
+}
+
+.sched-title {
+  margin-top: 12px;
+}
+
+.sched-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.sched-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.key {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.key-on_track {
+  background: var(--green);
+}
+.key-due_soon {
+  background: var(--yellow);
+}
+.key-overdue {
+  background: var(--red);
+}
+
+.board-scroll {
+  overflow-x: auto;
+  margin: 14px -20px 0;
+  padding: 0 20px 10px;
+}
+
+.board {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 1240px;
+}
+
+.col {
+  flex: 1 1 0;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font: 700 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.col-count {
+  color: var(--faint);
+}
+
+.col-empty {
+  padding: 14px 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.ep {
+  --tone: var(--faint);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  color: var(--text);
+  background: var(--panel-2);
+  box-shadow: var(--glass-inset);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--tone);
+  border-radius: 8px;
+}
+
+.ep-link {
+  cursor: pointer;
+}
+
+.ep-link:hover {
+  border-color: var(--line-2);
+  border-left-color: var(--tone);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.ep-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ep-num {
+  font: 600 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.ep-owner {
+  font: 600 9px/1 var(--mono);
+  color: var(--faint);
+  background: var(--panel-2);
+  border-radius: 3px;
+  padding: 3px 4px;
+}
+
+.ep-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ep-cd {
+  font: 500 10.5px/1.4 var(--mono);
+  color: var(--tone);
+}
+
+.ep-date {
+  color: var(--faint);
+}
+
+.ep-on_track {
+  --tone: var(--green);
+}
+
+.ep-due_soon {
+  --tone: var(--yellow);
+}
+
+.ep-overdue {
+  --tone: var(--red);
+  background: rgba(255, 61, 46, 0.08);
+}
+
+.ep-published {
+  --tone: #8a86ff;
+  opacity: 0.7;
+}
+
+.ep-blocked {
+  --tone: var(--muted);
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.ep-none .ep-cd {
+  color: var(--faint);
+}

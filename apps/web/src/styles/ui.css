@@ -1,0 +1,353 @@
+/* Shared primitives: shell, tabs, buttons, chips, thumbnails, display type.
+   Surfaces are frosted glass over the page glows. */
+
+.app {
+  min-height: 100vh;
+}
+
+/* ---------- shell ---------- */
+
+.shell-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(11, 11, 11, 0.55);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset);
+}
+
+.shell-mark {
+  font: 800 19px/1 var(--display);
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.shell-center {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.shell-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shell-title {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.tab {
+  font: 500 12px/1 var(--sans);
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab-on,
+.tab-on:hover {
+  background: #fff;
+  color: #0b0b0b;
+}
+
+.who {
+  font-size: 12px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  font: 700 9.5px/1 var(--mono);
+  color: var(--accent-ink);
+}
+
+.status {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.status::before,
+.live::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: var(--green);
+}
+
+.pill-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 10.5px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border-radius: 999px;
+  padding: 7px 11px;
+  box-shadow: 0 6px 18px rgba(255, 122, 26, 0.28);
+}
+
+.pill-accent::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+}
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px 64px;
+}
+
+/* ---------- controls ---------- */
+
+.btn {
+  font: 600 12.5px/1 var(--sans);
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--glass-inset);
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.btn-accent {
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border-color: transparent;
+  box-shadow: 0 8px 22px rgba(255, 122, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn-accent:hover {
+  background: linear-gradient(135deg, #ffc27a, #ff8a35);
+}
+
+.btn-green {
+  background: var(--green);
+  border-color: var(--green);
+  color: #05130b;
+}
+
+.btn-green:hover {
+  background: #52dd90;
+}
+
+.btn-sm {
+  padding: 7px 11px;
+  font-size: 11.5px;
+}
+
+.btn-wide {
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.chip {
+  font: 500 11px/1 var(--sans);
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: default;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.chip-on {
+  color: #0b0b0b;
+  background: #fff;
+  border-color: #fff;
+}
+
+/* ---------- type ---------- */
+
+.mono {
+  font-family: var(--mono);
+}
+
+.eyebrow {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.92;
+  color: var(--text);
+}
+
+.display-xl {
+  font-size: clamp(40px, 5.2vw, 66px);
+}
+
+.display-lg {
+  font-size: 36px;
+}
+
+.display-md {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.display-sm {
+  font-size: 19px;
+  line-height: 0.98;
+}
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 34px 0 14px;
+}
+
+.sec-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sec-hint {
+  margin-left: auto;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+/* ---------- thumbnails ---------- */
+
+.thumb {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  background: radial-gradient(120% 110% at 35% 30%, #4a3222 0%, #241a14 55%, #15110e 100%);
+}
+
+.thumb-cool {
+  background: radial-gradient(120% 110% at 60% 40%, #233a4d 0%, #14212c 55%, #0f151b 100%);
+}
+
+.thumb-amber {
+  background: radial-gradient(120% 110% at 40% 60%, #5a4020 0%, #2b2014 55%, #17130e 100%);
+}
+
+.thumb-slate {
+  background: radial-gradient(120% 110% at 50% 50%, #2f3a42 0%, #1a2126 55%, #111517 100%);
+}
+
+.thumb-red {
+  background: radial-gradient(120% 110% at 40% 40%, #5a2a22 0%, #2a1814 55%, #160f0d 100%);
+}
+
+.tc {
+  display: inline-block;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 4px 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.tc-abs {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+}
+
+.drop-icon {
+  display: block;
+  width: 22px;
+  height: 17px;
+  margin: 0 auto 8px;
+  border: 1.5px solid var(--faint);
+  border-radius: 3px;
+  position: relative;
+}
+
+.drop-icon::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--faint);
+}

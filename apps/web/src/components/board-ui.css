@@ -1,0 +1,201 @@
+/* Board components: Banner, BoardSkeleton, EmptyState, ErrorPanel.
+   Flat dark panels with a thin rim, matching the rest of the app. */
+
+/* ---------- Banner ---------- */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  font: 400 12.5px/1.45 var(--sans);
+  color: var(--text);
+  text-align: left;
+}
+
+.banner-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.banner-body {
+  min-width: 0;
+}
+
+.banner-info .banner-dot {
+  color: #6fd8ff;
+}
+
+.banner-warn .banner-dot {
+  color: var(--yellow);
+}
+
+.banner-warn {
+  border-color: rgba(255, 197, 61, 0.35);
+}
+
+.banner-error .banner-dot {
+  color: var(--red);
+}
+
+.banner-error {
+  border-color: rgba(255, 61, 46, 0.45);
+}
+
+/* ---------- BoardSkeleton ---------- */
+
+.board-skeleton .columns {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.board-skeleton .column {
+  flex: 1 1 0;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton {
+  border-radius: 6px;
+  background: var(--panel-2);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-sheen 1.5s ease-in-out infinite;
+}
+
+.skeleton-heading {
+  height: 10px;
+  width: 60%;
+  margin-bottom: 4px;
+}
+
+.skeleton-card {
+  height: 58px;
+  border: 1px solid var(--line);
+}
+
+@keyframes skeleton-sheen {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* ---------- EmptyState ---------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  text-align: center;
+  color: var(--text);
+}
+
+.empty-state h2 {
+  font: 800 22px/1 var(--display);
+  text-transform: uppercase;
+}
+
+.empty-state p {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.empty-state-action {
+  margin-top: 6px;
+  padding: 10px 16px;
+  font: 600 12.5px/1 var(--sans);
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.empty-state-action:hover {
+  background: linear-gradient(135deg, #ffc27a, #ff8a35);
+}
+
+/* ---------- ErrorPanel ---------- */
+
+.error-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 61, 46, 0.4);
+  background: var(--panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  text-align: left;
+  color: var(--text);
+}
+
+.error-panel h2 {
+  font: 800 22px/1 var(--display);
+  text-transform: uppercase;
+}
+
+.error-panel p {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.error-panel button {
+  margin-top: 4px;
+  padding: 8px 14px;
+  font: 600 12px/1 var(--sans);
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.error-panel .trace {
+  font: 500 10px/1 var(--mono);
+  color: var(--faint);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px 7px;
+}

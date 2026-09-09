@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     oidc_issuer: str = ""
     oidc_audience: str = ""
     jwks_cache_seconds: int = 3600
+    cors_origins: list[str] = ["http://localhost:5173"]
     # --- observability ---
     otel_enabled: bool = False
     otel_exporter_otlp_endpoint: str = ""
