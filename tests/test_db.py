@@ -14,9 +14,4 @@ def test_rollback_does_not_persist(db):
     )
     db.rollback()
 
-    assert (
-        db.query(Episode)
-        .filter_by(id="rollback-123")
-        .one_or_none()
-        is None
-    )
+    assert db.query(Episode).filter_by(id="rollback-123").one_or_none() is None
