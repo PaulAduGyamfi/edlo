@@ -21,7 +21,6 @@ resource "aws_ecs_task_definition" "api" {
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.api_task.arn
 
-  # Graviton: ~20% cheaper. Your CI build MUST target linux/arm64 to match.
   runtime_platform {
     cpu_architecture        = "ARM64"
     operating_system_family = "LINUX"
@@ -38,12 +37,56 @@ resource "aws_ecs_task_definition" "api" {
       { name = "LOG_LEVEL", value = "INFO" },
     ]
 
+    environment = [
+      { name = "ENVIRONMENT", value = var.environment }, { name = "LOG_LEVEL", value = "INFO" },
+    ]
+    secrets = [
+      { name = "DATABASE_URL"
+        valueFrom = "${aws_secretsmanager_secret.app.arn}:DATABASE_URL::" },
+    ]
+
     logConfiguration = {
       logDriver = "awslogs"
       options = {
         "awslogs-group"         = aws_cloudwatch_log_group.api.name
         "awslogs-region"        = var.region
         "awslogs-stream-prefix" = "api"
+      }
+    }
+  }])
+}
+
+resource "aws_ecs_task_definition" "migrate" {
+  family                   = "edlo-migrate"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.api_task.arn
+
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+
+  container_definitions = jsonencode([{
+    name      = "migrate"
+    image     = "${aws_ecr_repository.api.repository_url}:${var.image_tag}"
+    essential = true
+    command   = ["alembic", "upgrade", "head"]
+
+    secrets = [{
+      name      = "DATABASE_URL"
+      valueFrom = "${aws_secretsmanager_secret.app.arn}:DATABASE_URL::"
+    }]
+
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.migrate.name
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "migrate"
       }
     }
   }])
@@ -84,4 +127,9 @@ resource "aws_ecs_service" "api" {
   lifecycle {
     ignore_changes = [task_definition]
   }
+}
+
+resource "aws_cloudwatch_log_group" "migrate" {
+  name              = "/ecs/edlo-migrate"
+  retention_in_days = 30
 }

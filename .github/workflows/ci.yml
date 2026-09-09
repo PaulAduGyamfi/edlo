@@ -34,6 +34,9 @@ jobs:
           cache: pip
       - run: pip install -e ".[dev]"
       - run: pytest -q --cov=edlo --cov=apps
+      - run: alembic upgrade head
+      - name: Migrations must be reversible
+        run: alembic downgrade -1 && alembic upgrade head
 
   build-push:
     runs-on: ubuntu-latest
@@ -102,6 +105,26 @@ jobs:
 
       # Record what is live NOW, so rollback has a target.
       - id: prev
+      - name: Run migrations
+        run: |
+          ACCOUNT=${{ secrets.AWS_ACCOUNT_ID }}
+          IMAGE=$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/edlo-api:${{ needs.build-push.outputs.tag }}
+
+          TASK=$(aws ecs run-task --cluster ${{ env.CLUSTER }} \
+            --task-definition edlo-migrate --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.PRIVATE_SUBNETS }}],securityGroups=[${{ secrets.APP_SG }}]}" \
+            --overrides '{"containerOverrides":[{"name":"migrate","image":"'"$IMAGE"'"}]}' \
+            --query 'tasks[0].taskArn' --output text)
+
+          aws ecs wait tasks-stopped --cluster ${{ env.CLUSTER }} --tasks "$TASK"
+
+          CODE=$(aws ecs describe-tasks --cluster ${{ env.CLUSTER }} --tasks "$TASK" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          if [ "$CODE" != "0" ]; then
+            aws logs tail /ecs/edlo-migrate --since 10m
+            exit 1
+          fi
         run: |
           echo "api=$(aws ecs describe-services --cluster edlo-production \
             --services edlo-api --query 'services[0].taskDefinition' \
