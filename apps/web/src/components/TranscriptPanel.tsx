@@ -1,7 +1,8 @@
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type ApiError, makeError, toApiError } from "../api/client";
-import { getDownloadUrl, getTranscript, storageUrl, type Transcript } from "../api/episodes";
+import { getDownloadUrl, getTranscript, type JobView, storageUrl, type Transcript } from "../api/episodes";
+import { useJob } from "../hooks/useJob";
 import { useToast } from "../state/toast";
 import { Banner } from "./Banner";
 import { ErrorDetail } from "./ErrorDetail";
@@ -9,6 +10,7 @@ import { ErrorDetail } from "./ErrorDetail";
 type State =
   | { status: "loading" }
   | { status: "absent" }
+  | { status: "pending"; job: JobView } // queued, running, or dead
   | { status: "error"; error: ApiError }
   | { status: "ready"; transcript: Transcript };
 
@@ -39,8 +41,10 @@ export function TranscriptPanel({ episodeId }: { episodeId: string }) {
   useEffect(() => {
     let cancelled = false;
     getTranscript(episodeId).then(
-      (transcript) => {
-        if (!cancelled) setState({ status: "ready", transcript });
+      (data) => {
+        if (cancelled) return;
+        if ("status" in data && data.status === "pending") setState({ status: "pending", job: data.job });
+        else setState({ status: "ready", transcript: data as Transcript });
       },
       (e: unknown) => {
         if (cancelled) return;
@@ -58,6 +62,11 @@ export function TranscriptPanel({ episodeId }: { episodeId: string }) {
     setAttempt((n) => n + 1);
   };
 
+  // While a job is in flight, poll it; when it succeeds, fetch the transcript.
+  const polled = useJob(state.status === "pending" ? state.job.id : null, (job) => {
+    if (job.status === "succeeded") retry();
+  });
+
   if (state.status === "loading") {
     return (
       <p className="panel-empty" aria-busy="true">
@@ -73,6 +82,29 @@ export function TranscriptPanel({ episodeId }: { episodeId: string }) {
       <Banner kind="error">
         <ErrorDetail error={state.error} lead="Couldn't load the transcript." onRetry={retry} />
       </Banner>
+    );
+  }
+  if (state.status === "pending") {
+    const job = polled && polled.id === state.job.id ? polled : state.job;
+    if (job.status === "dead") {
+      return (
+        <Banner kind="error">
+          <strong>Transcription failed.</strong> {job.user_message ?? "Something went wrong in the background."}{" "}
+          The audio itself is safe; upload the mix again to retry.
+        </Banner>
+      );
+    }
+    return (
+      <div className="tx-pending" role="status" aria-busy="true">
+        <span className="tx-pending-dot" aria-hidden="true" />
+        <div>
+          <strong>{job.status === "running" ? "Transcribing the rough mix…" : "Waiting for a worker…"}</strong>
+          <span className="tx-pending-sub">
+            A full episode takes a few minutes. You can close this tab; it carries on in the background.
+            {job.attempt > 1 ? ` Attempt ${job.attempt}.` : ""}
+          </span>
+        </div>
+      </div>
     );
   }
   return <TranscriptView episodeId={episodeId} transcript={state.transcript} />;

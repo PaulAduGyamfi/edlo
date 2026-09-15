@@ -351,3 +351,14 @@
   border-right: 5px solid transparent;
   border-bottom: 5px solid var(--faint);
 }
+
+.btn-danger {
+  color: var(--red);
+  border-color: rgba(255, 61, 46, 0.45);
+}
+
+.btn-danger:hover:not(:disabled) {
+  color: #fff;
+  background: var(--red);
+  border-color: var(--red);
+}

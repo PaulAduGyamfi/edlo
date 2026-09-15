@@ -14,3 +14,8 @@ class Actor:
     name: str
     role: Role
     tenant_id: str = "sozzled"
+
+
+# Moves the system makes on its own (a transcript arriving) are recorded as
+# this actor, so the history never pretends a person did them.
+SYSTEM_ACTOR = Actor(id="system", name="Edlo", role=Role.OWNER)

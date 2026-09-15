@@ -9,12 +9,15 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi", "uvicorn[standard]", "pydantic-settings", 
     "sqlalchemy>=2", "alembic", "psycopg[binary]", 
-    "python-multipart", "redis", "rq", "structlog", 
-    "openai", "faster-whisper", "boto3"
+    "python-multipart", "redis", "structlog",
+    "openai", "boto3"
 ]
 
 [project.optional-dependencies]
+# The worker needs ffmpeg and half a gigabyte of Whisper weights. The API needs neither.
+worker = ["faster-whisper"]
 dev = [
+    "faster-whisper",
     "pytest", "pytest-asyncio", "httpx", "fakeredis",
     "moto[s3,sqs]", "ruff", "mypy", "pytest-cov", "testcontainers[postgres]",
 ]
@@ -33,6 +36,6 @@ ignore_missing_imports = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["apps", "apps.api*", "edlo*"]
+include = ["apps", "apps.api*", "apps.worker*", "edlo*"]
 exclude = ["apps.web*", "tests*", "proof*", "evals*", "uploads*", "migrations*", "edlo*"]
 namespaces = false

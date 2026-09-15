@@ -54,6 +54,9 @@ export const setSlot = (id: string, publish_on: string) =>
 
 export const getHistory = (id: string) => api<Transition[]>(`/episodes/${id}/history`);
 
+/** 204. Removes the audio, transcript, jobs, history and posting slot with it. */
+export const deleteEpisode = (id: string) => api<void>(`/episodes/${id}`, { method: "DELETE" });
+
 export type UploadTarget = {
   url: string;
   method: "POST" | "PUT"; // POST: S3 presigned form. PUT: the local dev route.
@@ -63,12 +66,29 @@ export type UploadTarget = {
   expires_in: number;
 };
 
+/** 202: the bytes are verified and a transcription job is queued. */
 export type UploadResult = {
   audio_file_id: string;
   replayed: boolean;
-  transcript_id: string | null;
-  transcript_error: string | null; // the audio is stored either way
+  job_id: string;
+  poll_url: string;
 };
+
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
+
+export type JobView = {
+  id: string;
+  kind: string;
+  episode_id: string;
+  status: JobStatus;
+  attempt: number;
+  error_class: string | null;
+  user_message: string | null; // only for dead jobs
+  created_at: string;
+  finished_at: string | null;
+};
+
+export const getJob = (id: string) => api<JobView>(`/jobs/${id}`);
 
 export type TranscriptSegment = { index: number; start_ms: number; end_ms: number; text: string };
 
@@ -84,7 +104,10 @@ export type Transcript = {
   segments: TranscriptSegment[];
 };
 
-export const getTranscript = (id: string) => api<Transcript>(`/episodes/${id}/transcript`);
+/** 200 with the transcript, or 202 while its job is queued, running or dead. */
+export type TranscriptResponse = Transcript | { status: "pending"; job: JobView };
+
+export const getTranscript = (id: string) => api<TranscriptResponse>(`/episodes/${id}/transcript`);
 
 export const createUploadTarget = (
   id: string,
@@ -99,11 +122,16 @@ export const completeUpload = (id: string, body: { key: string; checksum_sha256:
   api<UploadResult>(`/episodes/${id}/audio/complete`, {
     method: "POST",
     body: JSON.stringify(body),
+    // One key per upload, reused by any retry of this same complete call, so
+    // a retry gets the original answer instead of a second job.
+    headers: { "Idempotency-Key": body.key },
   });
 
 /** stamp=false fetches a URL for in-browser playback without counting as the handoff. */
 export const getDownloadUrl = (id: string, kind: AudioKind, opts: { stamp?: boolean } = {}) =>
-  api<{ url: string }>(`/episodes/${id}/audio/${kind}/download-url${opts.stamp === false ? "?stamp=false" : ""}`);
+  api<{ url: string; filename: string }>(
+    `/episodes/${id}/audio/${kind}/download-url${opts.stamp === false ? "?stamp=false" : ""}`,
+  );
 
 /** Local storage hands back a path on the API; S3 hands back an absolute URL. */
 export const storageUrl = (url: string) => (url.startsWith("/") ? `${API_BASE}${url}` : url);
@@ -193,8 +221,7 @@ export function uploadAudio(
 
 /** The API hands back a presigned URL, so a plain link click does the transfer. */
 export async function downloadAudio(id: string, kind: AudioKind): Promise<string> {
-  const { url } = await getDownloadUrl(id, kind);
-  const filename = `${kind}.wav`; // what the server puts in Content-Disposition
+  const { url, filename } = await getDownloadUrl(id, kind); // the name it was uploaded as
   const a = document.createElement("a");
   a.href = storageUrl(url);
   a.download = filename;

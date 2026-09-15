@@ -1,22 +1,20 @@
-import os
-import tempfile
 from datetime import UTC, datetime
-from typing import Literal
+from pathlib import PurePosixPath
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 
 from apps.api.app.deps import ActorDep, SessionDep
+from apps.api.app.idempotency import fingerprint, lookup, remember
 from edlo.config import get_settings
 from edlo.domain.roles import Role
 from edlo.logging import log
-from edlo.models import AudioFile, Episode, Transcript
+from edlo.models import AudioFile, Episode, Job
+from edlo.queue import enqueue
 from edlo.storage import get_storage
-from edlo.transcription.engine import (
-    AudioDecodeError,
-    TranscriptTooShort,
-    transcribe_file,
-)
 
 router = APIRouter(prefix="/episodes", tags=["audio"])
 
@@ -55,6 +53,7 @@ def create_upload_target(
             episode_id=episode_id,
             kind=body.kind,
             storage_key=key,
+            filename=PurePosixPath(body.filename).name,  # what the download is called
             status="pending",
             uploaded_by=actor.id,
         )
@@ -69,9 +68,14 @@ class CompleteRequest(BaseModel):
     checksum_sha256: str = Field(min_length=64, max_length=64)
 
 
-@router.post("/{episode_id}/audio/complete", status_code=201)
+@router.post("/{episode_id}/audio/complete", status_code=202)
 def complete_upload(
-    episode_id: str, body: CompleteRequest, db: SessionDep, actor: ActorDep
+    episode_id: str,
+    body: CompleteRequest,
+    request: Request,
+    db: SessionDep,
+    actor: ActorDep,
+    idempotency_key: Annotated[str | None, Header()] = None,
 ):
     """
     The browser calls this after S3 accepts the bytes.
@@ -79,7 +83,22 @@ def complete_upload(
     Never trust it. `head_object` is the authority on whether the upload
     actually happened -- a client could call complete for a key it never
     uploaded, or for someone else's key.
+
+    202: the transcript is produced by a worker; the response names the job.
     """
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key header required")
+    route = f"POST /episodes/{episode_id}/audio/complete"
+    fp = fingerprint(body.model_dump_json().encode())
+    try:
+        stored = lookup(db, idempotency_key, route, fp)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    if stored is not None:
+        return JSONResponse(
+            stored, status_code=202, headers={"Idempotency-Replayed": "true"}
+        )
+
     obj = get_storage().head(body.key)
     if obj is None:
         raise HTTPException(409, "object not found in storage; upload did not complete")
@@ -93,71 +112,53 @@ def complete_upload(
     )
     if row is None:
         raise HTTPException(404, "no pending upload for that key")
-    if row.status == "ready":
-        return {"audio_file_id": row.id, "replayed": True}  # idempotent
 
-    checksum = obj.checksum_sha256 or body.checksum_sha256
-    row.status = "ready"
-    row.size_bytes = obj.size_bytes
-    row.checksum = checksum
-    row.uploaded_at = datetime.now(UTC)
-    db.commit()
+    if row.status != "ready":
+        row.status = "ready"
+        row.size_bytes = obj.size_bytes
+        row.checksum = obj.checksum_sha256 or body.checksum_sha256
+        row.uploaded_at = datetime.now(UTC)
+        db.commit()
 
-    # Transcribe right here. Simplest thing that works.
-    fd, scratch = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
+    # One transcribe job per audio file, enforced by the unique constraint.
+    # Two concurrent completes produce one row and one IntegrityError; the
+    # loser returns the existing job.
+    job = Job(
+        kind="transcribe",
+        episode_id=episode_id,
+        payload={"audio_file_id": row.id},
+        idempotency_key=row.id,
+        trace_id=request.state.trace_id,
+    )
+    db.add(job)
+    created = True
     try:
-        get_storage().download_to_path(key=body.key, dest=scratch)
-        artifact = transcribe_file(scratch, checksum)
-    except (AudioDecodeError, TranscriptTooShort) as e:
-        # The audio is stored and ready; only the transcript is missing.
-        log.warning("transcription_failed", episode_id=episode_id, error=str(e))
-        return {
-            "audio_file_id": row.id,
-            "replayed": False,
-            "transcript_id": None,
-            "transcript_error": str(e),
-        }
-    finally:
-        os.unlink(scratch)  # the Protocol docstring said so
-
-    # Artifact in object storage, pointer in the database.
-    art_key = f"episodes/{episode_id}/transcript/{checksum[:32]}.json"
-    fd, tmp = tempfile.mkstemp(suffix=".json")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(artifact.model_dump_json())
-        get_storage().upload_from_path(
-            key=art_key, src=tmp, content_type="application/json"
+        db.commit()  # job row committed FIRST
+    except IntegrityError:
+        db.rollback()
+        created = False
+        job = db.query(Job).filter_by(kind="transcribe", idempotency_key=row.id).one()
+    if created:
+        # Enqueue AFTER the commit. The reverse order lets a worker receive a
+        # message for a row that was never committed.
+        enqueue("transcribe", {"job_id": job.id, "audio_file_id": row.id})
+        log.info(
+            "audio_uploaded",
+            episode_id=episode_id,
+            kind=row.kind,
+            job_id=job.id,
+            actor=actor.id,
         )
-    finally:
-        os.unlink(tmp)
-    transcript = Transcript(
-        audio_file_id=row.id,
-        episode_id=episode_id,
-        storage_key=art_key,
-        engine=artifact.engine,
-        model_version=artifact.model_version,
-        language=artifact.language,
-        duration_ms=artifact.duration_ms,
-        segment_count=len(artifact.segments),
-        audio_checksum=checksum,
-    )
-    db.add(transcript)
-    db.commit()
-    log.info(
-        "transcription_complete",
-        episode_id=episode_id,
-        transcript_id=transcript.id,
-        segments=len(artifact.segments),
-        duration_ms=artifact.duration_ms,
-    )
-    return {
+
+    response = {
         "audio_file_id": row.id,
-        "replayed": False,
-        "transcript_id": transcript.id,
-        "transcript_error": None,
+        "replayed": not created,
+        "job_id": job.id,
+        "poll_url": f"/jobs/{job.id}",
     }
+    remember(db, idempotency_key, route, fp, response)
+    db.commit()
+    return JSONResponse(response, status_code=202)
 
 
 @router.get("/{episode_id}/audio/{kind}/download-url")
@@ -183,8 +184,10 @@ def download_url(
             episode_id=episode_id,
             hours=(row.first_downloaded_at - uploaded).total_seconds() / 3600,
         )
+    filename = row.filename or f"{kind}{PurePosixPath(row.storage_key).suffix}"
     return {
         "url": get_storage().presign_download(
-            key=row.storage_key, filename=f"{kind}.wav", expires_in=900
-        )
+            key=row.storage_key, filename=filename, expires_in=900
+        ),
+        "filename": filename,
     }

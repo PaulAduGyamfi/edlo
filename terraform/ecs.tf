@@ -38,6 +38,8 @@ resource "aws_ecs_task_definition" "api" {
       { name = "STORAGE_BACKEND", value = "s3" },
       { name = "S3_BUCKET", value = aws_s3_bucket.media.bucket },
       { name = "S3_REGION", value = var.region },
+      { name = "QUEUE_BACKEND", value = "sqs" },
+      { name = "SQS_QUEUE_URL", value = aws_sqs_queue.jobs.url },
     ]
     secrets = [
       { name = "DATABASE_URL"

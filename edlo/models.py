@@ -1,12 +1,15 @@
 # edlo/models.py
 import enum
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Date,
     DateTime,
+    Index,
     Integer,
     String,
     Text,
@@ -104,6 +107,9 @@ class AudioFile(Base):
     episode_id: Mapped[str] = mapped_column(String(32), index=True)
     kind: Mapped[str] = mapped_column(String(16))  # rough | final
     storage_key: Mapped[str] = mapped_column(String(300))
+    filename: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # as uploaded
     status: Mapped[str] = mapped_column(
         String(16), default="pending"
     )  # pending | ready
@@ -133,6 +139,67 @@ class Transcript(Base):
     duration_ms: Mapped[int] = mapped_column(Integer)
     segment_count: Mapped[int] = mapped_column(Integer)
     audio_checksum: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class Job(Base):
+    """
+    A unit of background work. The row is the durable record; the queue
+    message is only the wake-up. Idempotency is enforced by the DATABASE
+    (kind + idempotency_key), not by application logic that can race.
+    """
+
+    __tablename__ = "jobs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    kind: Mapped[str] = mapped_column(String(64))
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    # queued | running | succeeded | failed | dead
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_class: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    attempt: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    # A worker owns the job until this passes; a dead worker's job becomes claimable.
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "kind", "idempotency_key", name="uq_jobs_kind_idempotency_key"
+        ),
+        Index("ix_jobs_status_created", "status", "created_at"),
+    )
+
+
+class IdempotencyRecord(Base):
+    """
+    Stored responses for job-creating requests. A table, not a dict: with two
+    API tasks behind a load balancer a retry lands on the other process.
+    """
+
+    __tablename__ = "idempotency_records"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    route: Mapped[str] = mapped_column(String(200), primary_key=True)
+    request_fingerprint: Mapped[str] = mapped_column(String(64))
+    response_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

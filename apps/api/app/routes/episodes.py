@@ -1,14 +1,16 @@
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from apps.api.app.deps import ActorDep, SessionDep
 from edlo.domain.roles import Role
 from edlo.logging import log
 from edlo.models import Episode
+from edlo.services.deletion import CannotDelete, delete_episode
 from edlo.services.schedule import ScheduleService, SlotInPast, SlotTaken
 from edlo.services.workflow import IllegalTransition, NotPermitted, WorkflowService
+from edlo.storage import get_storage
 
 router = APIRouter(prefix="/episodes", tags=["episodes"])
 
@@ -125,3 +127,33 @@ def list_episodes(db: SessionDep) -> list[EpisodeView]:
         .all()
     )
     return [_view(e, svc) for e in eps]
+
+
+@router.delete("/{episode_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_episode(episode_id: str, db: SessionDep, actor: ActorDep) -> Response:
+    """Gone for good: rows, slot, history, and the objects in storage."""
+    if actor.role not in (Role.AUDIO_EDITOR, Role.OWNER):
+        raise HTTPException(403, "only the audio editor or the owner deletes episodes")
+    ep = db.get(Episode, episode_id)
+    if ep is None:
+        raise HTTPException(404, "episode not found")
+    title = ep.title
+    try:
+        keys = delete_episode(db, ep)
+    except CannotDelete as e:
+        raise HTTPException(409, str(e))
+
+    storage = get_storage()
+    for key in keys:
+        try:
+            storage.delete(key)
+        except Exception as e:  # noqa: BLE001 - the rows are gone; an orphan is a cost, not a bug
+            log.warning("orphaned_object", key=key, error=f"{type(e).__name__}: {e}")
+    log.info(
+        "episode_deleted",
+        episode_id=episode_id,
+        title=title,
+        actor=actor.id,
+        objects=len(keys),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

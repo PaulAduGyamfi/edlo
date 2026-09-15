@@ -5,3 +5,5 @@ output "private_subnets" { value = aws_subnet.private[*].id }
 output "app_security_group" { value = aws_security_group.app.id }
 output "cloudfront_distribution_id" { value = aws_cloudfront_distribution.web.id }
 output "cloudfront_domain" { value = aws_cloudfront_distribution.web.domain_name }
+output "worker_ecr_repository" { value = aws_ecr_repository.worker.repository_url }
+output "jobs_queue_url" { value = aws_sqs_queue.jobs.url }

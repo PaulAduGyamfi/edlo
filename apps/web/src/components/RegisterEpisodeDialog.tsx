@@ -63,14 +63,11 @@ export function RegisterEpisodeDialog({
     );
     upload.current = u;
     try {
-      const result = await u.promise;
-      const transcript = result.transcript_error
-        ? ` · transcription failed: ${result.transcript_error}`
-        : " · transcript ready";
+      await u.promise;
       toast.push({
-        kind: result.transcript_error ? "info" : "success",
+        kind: "success",
         title: `Registered “${episode.title}”`,
-        detail: `${file.name} (${fmtBytes(file.size)}) uploaded${transcript}${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
+        detail: `${file.name} (${fmtBytes(file.size)}) uploaded · transcription queued, you can close this tab${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
       });
       onCreated(episode);
     } catch (err) {
@@ -127,7 +124,7 @@ export function RegisterEpisodeDialog({
               {phase.step !== "uploading"
                 ? "Upload failed."
                 : phase.fraction >= 1
-                  ? "Transcribing rough mix… this takes a few minutes for a full episode."
+                  ? "Queuing transcription…"
                   : `Uploading rough mix… ${pct}%`}
             </span>
             <span className="progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>

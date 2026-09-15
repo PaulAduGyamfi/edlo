@@ -7,6 +7,7 @@ Its "presigned URLs" point at the /dev/storage routes, which stand in for S3.
 import hashlib
 import shutil
 from pathlib import Path
+from urllib.parse import urlencode
 
 from edlo.storage.base import StoredObject, UploadTarget
 from edlo.storage.keys import UnsafeKey, assert_safe_key, build_key
@@ -44,7 +45,7 @@ class LocalStorage:
 
     def presign_download(self, *, key: str, filename: str, expires_in: int) -> str:
         assert_safe_key(key)
-        return f"/dev/storage/{key}"
+        return f"/dev/storage/{key}?{urlencode({'filename': filename})}"
 
     def head(self, key: str) -> StoredObject | None:
         p = self.path(key)

@@ -4,6 +4,8 @@ here so the browser follows the same steps it does against a presigned URL.
 Mounted only when STORAGE_BACKEND=local (see main.py).
 """
 
+from pathlib import PurePosixPath
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 
@@ -35,11 +37,14 @@ async def put_object(key: str, request: Request) -> Response:
 
 
 @router.get("/{key:path}")
-def get_object(key: str) -> FileResponse:
+def get_object(key: str, filename: str | None = None) -> FileResponse:
     try:
         path = _local().path(key)
     except UnsafeKey as e:
         raise HTTPException(400, str(e))
     if not path.exists():
         raise HTTPException(404, "no such object")
-    return FileResponse(path, filename=path.name)
+    # Like S3's response-content-disposition: the download gets its uploaded name.
+    return FileResponse(
+        path, filename=PurePosixPath(filename).name if filename else path.name
+    )

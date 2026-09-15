@@ -1,10 +1,12 @@
 import hashlib
 from datetime import date
+from urllib.parse import unquote
 
 import pytest
 from pydantic import ValidationError
 
-from edlo.models import AudioFile, Episode, Transcript
+from apps.worker.main import process
+from edlo.models import AudioFile, Episode, Job, Transcript
 from edlo.transcription.engine import AudioDecodeError
 from edlo.transcription.schema import TranscriptArtifact, TranscriptSegment
 
@@ -18,9 +20,9 @@ def seg(i, start, end, text="words here"):
     return TranscriptSegment(index=i, start_ms=start, end_ms=end, text=text)
 
 
-def artifact(segments, duration_ms=10_000):
+def artifact(segments, duration_ms=10_000, checksum=CHECKSUM):
     return TranscriptArtifact(
-        audio_checksum=CHECKSUM,
+        audio_checksum=checksum,
         engine="fake",
         model_version="v0",
         language="en",
@@ -57,7 +59,7 @@ def test_text_between_uses_the_stored_segments():
     assert a.text_between(1000, 2000) == "two"
 
 
-# ---- the route: transcribe when the upload completes ----
+# ---- the routes and the worker, end to end on local storage ----
 
 
 def _episode(db) -> Episode:
@@ -67,102 +69,124 @@ def _episode(db) -> Episode:
     return ep
 
 
-def _upload(client, episode_id) -> dict:
+def _upload(client, episode_id, filename="rough mix v2.wav", data=DATA) -> dict:
     target = client.post(
         f"/episodes/{episode_id}/audio/upload-target",
         json={
             "kind": "rough",
-            "filename": "a.wav",
+            "filename": filename,
             "content_type": "audio/wav",
             "size_bytes": 1,
         },
         headers=ALBERT,
     ).json()
     assert (
-        client.put(target["url"], content=DATA, headers=target["headers"]).status_code
+        client.put(target["url"], content=data, headers=target["headers"]).status_code
         == 204
     )
     return target
 
 
-def test_complete_transcribes_and_serves_the_transcript(
-    client, db, local_storage, monkeypatch
-):
-    fake = artifact(
-        [
-            seg(0, 0, 1000, "hello"),
-            seg(1, 1000, 2000, "sozzled"),
-            seg(2, 2000, 3000, "pod"),
-        ]
+def _complete(client, episode_id, target, checksum=CHECKSUM, key=None):
+    return client.post(
+        f"/episodes/{episode_id}/audio/complete",
+        json={"key": target["key"], "checksum_sha256": checksum},
+        headers={**ALBERT, "Idempotency-Key": key or target["key"]},
     )
-    seen = []
-    monkeypatch.setattr(
-        "apps.api.app.routes.audio.transcribe_file",
-        lambda path, checksum: seen.append(checksum) or fake,
-    )
+
+
+FAKE = artifact(
+    [seg(0, 0, 1000, "hello"), seg(1, 1000, 2000, "sozzled"), seg(2, 2000, 3000, "pod")]
+)
+
+
+def test_complete_queues_a_transcribe_job(client, db, local_storage, queue):
     ep = _episode(db)
     target = _upload(client, ep.id)
 
-    r = client.post(
-        f"/episodes/{ep.id}/audio/complete",
-        json={"key": target["key"], "checksum_sha256": CHECKSUM},
-        headers=ALBERT,
+    r = _complete(client, ep.id, target)
+    assert r.status_code == 202, r.text
+    body = r.json()
+    assert body["replayed"] is False and body["poll_url"] == f"/jobs/{body['job_id']}"
+
+    job = db.get(Job, body["job_id"])
+    assert (job.kind, job.status, job.attempt) == ("transcribe", "queued", 0)
+    assert job.payload == {"audio_file_id": body["audio_file_id"]}
+    assert job.trace_id  # the request's trace id travels with the job
+    assert queue.depth() == 1
+
+    assert client.get(f"/jobs/{job.id}", headers=CHRIS).json()["status"] == "queued"
+    pending = client.get(f"/episodes/{ep.id}/transcript", headers=CHRIS)
+    assert pending.status_code == 202
+    assert pending.json()["job"]["id"] == job.id
+
+
+def test_worker_transcribes_and_moves_the_episode(
+    client, db, local_storage, queue, monkeypatch
+):
+    monkeypatch.setattr(
+        "edlo.jobs.transcribe.transcribe_file", lambda path, checksum: FAKE
     )
-    assert r.status_code == 201, r.text
-    assert r.json()["transcript_error"] is None
-    assert seen == [CHECKSUM]
+    ep = _episode(db)
+    target = _upload(client, ep.id)
+    job_id = _complete(client, ep.id, target).json()["job_id"]
 
-    row = db.query(Transcript).filter_by(episode_id=ep.id).one()
-    assert row.id == r.json()["transcript_id"]
-    assert (row.segment_count, row.duration_ms, row.engine) == (3, 10_000, "fake")
-    assert local_storage.head(row.storage_key) is not None  # the artifact is in storage
+    (message,) = queue.receive(wait_seconds=0)
+    process(queue, message)
 
+    job = db.get(Job, job_id)
+    db.refresh(job)
+    assert job.status == "succeeded" and job.lease_owner is None and job.attempt == 1
+    assert queue.depth() == 0 and queue.receive(wait_seconds=0) == []  # acked
     t = client.get(f"/episodes/{ep.id}/transcript", headers=CHRIS)
     assert t.status_code == 200
-    assert t.json()["id"] == row.id
     assert [s["text"] for s in t.json()["segments"]] == ["hello", "sozzled", "pod"]
+    history = client.get(f"/episodes/{ep.id}/history", headers=CHRIS).json()
+    assert history[-1]["to"] == "mixing" and history[-1]["actor"] == "system"
 
 
-def test_transcription_failure_keeps_the_audio(client, db, local_storage, monkeypatch):
+def test_corrupt_audio_is_a_dead_job_with_a_user_message(
+    client, db, local_storage, queue, monkeypatch
+):
     def boom(path, checksum):
         raise AudioDecodeError("could not decode audio: Nope")
 
-    monkeypatch.setattr("apps.api.app.routes.audio.transcribe_file", boom)
+    monkeypatch.setattr("edlo.jobs.transcribe.transcribe_file", boom)
     ep = _episode(db)
     target = _upload(client, ep.id)
+    job_id = _complete(client, ep.id, target).json()["job_id"]
 
-    r = client.post(
-        f"/episodes/{ep.id}/audio/complete",
-        json={"key": target["key"], "checksum_sha256": CHECKSUM},
-        headers=ALBERT,
+    (message,) = queue.receive(wait_seconds=0)
+    process(queue, message)
+
+    view = client.get(f"/jobs/{job_id}", headers=CHRIS).json()
+    assert view["status"] == "dead" and view["error_class"] == "AudioDecodeError"
+    assert "could not be read" in view["user_message"]
+    assert queue.receive(wait_seconds=0) == []  # acked: a retry cannot help
+    assert client.get(f"/episodes/{ep.id}/transcript", headers=CHRIS).status_code == 202
+    assert (
+        db.get(AudioFile, view and db.get(Job, job_id).payload["audio_file_id"]).status
+        == "ready"
     )
-    assert r.status_code == 201
-    assert r.json()["transcript_id"] is None
-    assert "could not decode" in r.json()["transcript_error"]
-    assert db.get(AudioFile, r.json()["audio_file_id"]).status == "ready"
-    assert client.get(f"/episodes/{ep.id}/transcript", headers=CHRIS).status_code == 404
 
 
-def test_transcript_requires_a_bearer(client):
-    assert client.get("/episodes/x/transcript").status_code == 401
+def test_download_keeps_the_uploaded_filename(client, db, local_storage, queue):
+    ep = _episode(db)
+    target = _upload(client, ep.id, filename="../Ep 42 rough mix.wav")
+    _complete(client, ep.id, target)
+
+    dl = client.get(f"/episodes/{ep.id}/audio/rough/download-url", headers=CHRIS).json()
+    assert dl["filename"] == "Ep 42 rough mix.wav"  # directories stripped, name kept
+    got = client.get(dl["url"])
+    assert got.status_code == 200
+    # Starlette writes non-token names RFC 5987 style; browsers decode it.
+    assert "Ep 42 rough mix.wav" in unquote(got.headers["content-disposition"])
 
 
-def test_playback_url_does_not_stamp_the_handoff(
-    client, db, local_storage, monkeypatch
-):
-    fake = artifact(
-        [seg(0, 0, 1000, "a"), seg(1, 1000, 2000, "b"), seg(2, 2000, 3000, "c")]
-    )
-    monkeypatch.setattr(
-        "apps.api.app.routes.audio.transcribe_file", lambda path, checksum: fake
-    )
+def test_playback_url_does_not_stamp_the_handoff(client, db, local_storage, queue):
     ep = _episode(db)
     target = _upload(client, ep.id)
-    done = client.post(
-        f"/episodes/{ep.id}/audio/complete",
-        json={"key": target["key"], "checksum_sha256": CHECKSUM},
-        headers=ALBERT,
-    ).json()
+    done = _complete(client, ep.id, target).json()
 
     play = client.get(
         f"/episodes/{ep.id}/audio/rough/download-url?stamp=false", headers=CHRIS
@@ -172,3 +196,37 @@ def test_playback_url_does_not_stamp_the_handoff(
 
     client.get(f"/episodes/{ep.id}/audio/rough/download-url", headers=CHRIS)
     assert db.get(AudioFile, done["audio_file_id"]).first_downloaded_at is not None
+
+
+def test_transcript_requires_a_bearer(client):
+    assert client.get("/episodes/x/transcript").status_code == 401
+    assert client.get("/jobs/x").status_code == 401
+
+
+def test_transcript_row_is_written_by_the_worker(db, local_storage, queue, monkeypatch):
+    monkeypatch.setattr(
+        "edlo.jobs.transcribe.transcribe_file", lambda path, checksum: FAKE
+    )
+    ep = _episode(db)
+    key = local_storage.new_key(episode_id=ep.id, kind="rough", filename="a.wav")
+    p = local_storage.path(key)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(DATA)
+    audio = AudioFile(
+        episode_id=ep.id,
+        kind="rough",
+        storage_key=key,
+        status="ready",
+        size_bytes=len(DATA),
+        checksum=CHECKSUM,
+        uploaded_by="u_albert",
+    )
+    db.add(audio)
+    db.commit()
+
+    from edlo.jobs.transcribe import transcribe_audio
+
+    transcribe_audio({"audio_file_id": audio.id})
+    row = db.query(Transcript).filter_by(audio_file_id=audio.id).one()
+    assert (row.segment_count, row.duration_ms) == (3, 10_000)
+    assert local_storage.head(row.storage_key) is not None

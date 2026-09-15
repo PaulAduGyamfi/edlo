@@ -14,6 +14,7 @@ export default defineConfig({
       '/version': API,
       '/episodes': API,
       '/dev': API,
+      '/jobs': API,
     },
   },
 })

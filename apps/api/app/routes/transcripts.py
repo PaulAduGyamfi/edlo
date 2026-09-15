@@ -3,9 +3,11 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from apps.api.app.deps import ActorDep, SessionDep
-from edlo.models import Transcript
+from apps.api.app.routes.jobs import job_view
+from edlo.models import Job, Transcript
 from edlo.storage import get_storage
 from edlo.transcription.schema import TranscriptArtifact
 
@@ -22,6 +24,18 @@ def get_transcript(episode_id: str, db: SessionDep, actor: ActorDep):
         .first()
     )
     if row is None:
+        # 202: the work is queued or running (or died); the client polls the job.
+        job = (
+            db.query(Job)
+            .filter_by(episode_id=episode_id, kind="transcribe")
+            .order_by(Job.created_at.desc())
+            .first()
+        )
+        if job is not None and job.status != "succeeded":
+            return JSONResponse(
+                {"status": "pending", "job": job_view(job).model_dump(mode="json")},
+                status_code=202,
+            )
         raise HTTPException(404, "no transcript yet")
 
     fd, scratch = tempfile.mkstemp(suffix=".json")

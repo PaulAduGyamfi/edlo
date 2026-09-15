@@ -1,5 +1,10 @@
+import { type FormEvent, useState } from "react";
+
+import { toApiError, type ApiError } from "../api/client";
+import { deleteEpisode } from "../api/episodes";
 import { AudioPanel } from "../components/AudioPanel";
 import { Banner } from "../components/Banner";
+import { Dialog } from "../components/Dialog";
 import { ErrorDetail } from "../components/ErrorDetail";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { HistoryList } from "../components/HistoryList";
@@ -10,6 +15,7 @@ import { STAGE_LABEL } from "../domain/workflow";
 import { fmtDate, fmtDateLong } from "../lib/dates";
 import { type Episode, useEpisodes } from "../state/episodes";
 import { useMe, useSession } from "../state/session";
+import { useToast } from "../state/toast";
 import { Shell, Tabs, Who } from "./Shell";
 import { type Go } from "./nav";
 
@@ -38,7 +44,7 @@ export function EpisodeScreen({ id, go }: { id: string; go: Go }) {
       </div>
     );
   } else {
-    body = <EpisodeBody episode={episode} />;
+    body = <EpisodeBody episode={episode} go={go} />;
   }
 
   return (
@@ -94,7 +100,7 @@ function Countdown({ episode }: { episode: Episode }) {
   );
 }
 
-function EpisodeBody({ episode }: { episode: Episode }) {
+function EpisodeBody({ episode, go }: { episode: Episode; go: Go }) {
   const { reload } = useEpisodes();
   return (
     <>
@@ -157,8 +163,78 @@ function EpisodeBody({ episode }: { episode: Episode }) {
             </header>
             <HistoryList history={episode.history} error={episode.historyError} onRetry={() => void reload()} />
           </section>
+
+          <DeletePanel episode={episode} go={go} />
         </aside>
       </div>
     </>
+  );
+}
+
+/** Only the audio editor and the owner delete, and never a published episode. */
+function DeletePanel({ episode, go }: { episode: Episode; go: Go }) {
+  const me = useMe();
+  const toast = useToast();
+  const { reload } = useEpisodes();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const published = episode.stage === "published";
+  const allowed = me.role !== "video_editor";
+  if (!allowed) return null;
+
+  async function confirm(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteEpisode(episode.id);
+      toast.push({ kind: "success", title: `Deleted “${episode.title}”`, detail: "Its posting slot is free again." });
+      go({ screen: "schedule" });
+      void reload();
+    } catch (err) {
+      setError(toApiError(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel panel-danger">
+      <header className="panel-head">
+        <h2 className="display-md">Remove</h2>
+        <span className="sec-sub">
+          {published ? "Published episodes are the record; they stay." : "Deletes the audio, transcript and history, and frees the posting slot."}
+        </span>
+      </header>
+      <div>
+        <button type="button" className="btn btn-danger" disabled={published} onClick={() => setConfirming(true)}>
+          Delete episode…
+        </button>
+      </div>
+      {confirming && (
+        <Dialog title="Delete episode" onClose={() => !busy && setConfirming(false)}>
+          <form className="form" onSubmit={(e) => void confirm(e)}>
+            <p className="form-hint">
+              Delete <strong>{episode.title}</strong>? This removes its audio, transcript, history and posting slot. It
+              can’t be undone.
+            </p>
+            {error && (
+              <Banner kind="error">
+                <ErrorDetail error={error} lead="Couldn’t delete the episode." />
+              </Banner>
+            )}
+            <div className="form-actions">
+              <button type="button" className="btn" onClick={() => setConfirming(false)} disabled={busy}>
+                Keep it
+              </button>
+              <button type="submit" className="btn btn-danger" disabled={busy}>
+                {busy ? "Deleting…" : "Delete episode"}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </section>
   );
 }
