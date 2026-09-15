@@ -3,3 +3,4 @@ environment       = "production"
 api_desired_count = 2
 domain            = ""
 github_repo       = "PaulAduGyamfi@58968061/edlo@1357757437"
+web_origin        = "https://d3mezq8vo9kgwj.cloudfront.net"

@@ -13,6 +13,7 @@ export default defineConfig({
       '/health': API,
       '/version': API,
       '/episodes': API,
+      '/dev': API,
     },
   },
 })

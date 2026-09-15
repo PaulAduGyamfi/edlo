@@ -1,98 +1,124 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Literal
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from apps.api.app.deps import ActorDep, SessionDep
 from edlo.config import get_settings
 from edlo.domain.roles import Role
 from edlo.logging import log
 from edlo.models import AudioFile, Episode
-from edlo.storage import LocalStorage, UnsupportedMedia, build_key
+from edlo.storage import get_storage
 
 router = APIRouter(prefix="/episodes", tags=["audio"])
 
 
-def storage() -> LocalStorage:
-    return LocalStorage(get_settings().upload_dir)
+class UploadRequest(BaseModel):
+    kind: Literal["rough", "final"]
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: str
+    size_bytes: int = Field(gt=0)
 
 
-@router.post("/{episode_id}/audio", status_code=201)
-async def upload_audio(
-    episode_id: str,
-    kind: str,
-    db: SessionDep,
-    actor: ActorDep,
-    file: Annotated[UploadFile, File()],
+@router.post("/{episode_id}/audio/upload-target")
+def create_upload_target(
+    episode_id: str, body: UploadRequest, db: SessionDep, actor: ActorDep
 ):
+    """Authorize and sign. The bytes go straight from the browser to S3."""
     if actor.role not in (Role.AUDIO_EDITOR, Role.OWNER):
         raise HTTPException(403, "only the audio editor uploads")
     if db.get(Episode, episode_id) is None:
         raise HTTPException(404, "episode not found")
+    s = get_settings()
+    if body.size_bytes > s.max_upload_bytes:
+        raise HTTPException(413, f"exceeds {s.max_upload_bytes // (1024**2)} MB")
 
-    settings = get_settings()
-    try:
-        key = build_key(episode_id=episode_id, kind=kind, filename=file.filename or "")
-    except UnsupportedMedia as e:
-        raise HTTPException(415, str(e))
-
-    def chunks():
-        total = 0
-        while data := file.file.read(1024 * 1024):
-            total += len(data)
-            if total > settings.max_upload_bytes:
-                raise HTTPException(413, "file too large")
-            yield data
-
-    size, checksum = storage().save_stream(key, chunks())
-
-    row = AudioFile(
-        episode_id=episode_id,
-        kind=kind,
-        storage_key=key,
-        size_bytes=size,
-        checksum=checksum,
-        uploaded_by=actor.id,
+    storage = get_storage()
+    key = storage.new_key(episode_id=episode_id, kind=body.kind, filename=body.filename)
+    target = storage.presign_upload(
+        key=key, content_type=body.content_type, max_bytes=s.max_upload_bytes
     )
-    db.add(row)
+
+    # Row first, status `pending`. The object does not exist yet -- the browser
+    # is about to create it. An abandoned `pending` row is cheap and sweepable.
+    # An object with no row is a byte we pay for forever and cannot find.
+    db.add(
+        AudioFile(
+            episode_id=episode_id,
+            kind=body.kind,
+            storage_key=key,
+            status="pending",
+            uploaded_by=actor.id,
+        )
+    )
     db.commit()
-
-    log.info(
-        "audio_uploaded",
-        episode_id=episode_id,
-        kind=kind,
-        size_bytes=size,
-        checksum=checksum[:12],
-        actor=actor.id,
-    )
-    return {"audio_file_id": row.id, "size_bytes": size, "checksum": checksum}
+    log.info("upload_target_issued", episode_id=episode_id, key=key, actor=actor.id)
+    return target
 
 
-@router.get("/{episode_id}/audio/{kind}")
-def download_audio(episode_id: str, kind: str, db: SessionDep, actor: ActorDep):
+class CompleteRequest(BaseModel):
+    key: str
+    checksum_sha256: str = Field(min_length=64, max_length=64)
+
+
+@router.post("/{episode_id}/audio/complete", status_code=201)
+def complete_upload(
+    episode_id: str, body: CompleteRequest, db: SessionDep, actor: ActorDep
+):
+    """
+    The browser calls this after S3 accepts the bytes.
+
+    Never trust it. `head_object` is the authority on whether the upload
+    actually happened -- a client could call complete for a key it never
+    uploaded, or for someone else's key.
+    """
+    obj = get_storage().head(body.key)
+    if obj is None:
+        raise HTTPException(409, "object not found in storage; upload did not complete")
+    if obj.checksum_sha256 and obj.checksum_sha256 != body.checksum_sha256:
+        raise HTTPException(409, "checksum mismatch; the upload was corrupted")
+
     row = (
         db.query(AudioFile)
-        .filter_by(episode_id=episode_id, kind=kind)
+        .filter_by(episode_id=episode_id, storage_key=body.key)
+        .one_or_none()
+    )
+    if row is None:
+        raise HTTPException(404, "no pending upload for that key")
+    if row.status == "ready":
+        return {"audio_file_id": row.id, "replayed": True}  # idempotent
+
+    row.status = "ready"
+    row.size_bytes = obj.size_bytes
+    row.checksum = obj.checksum_sha256
+    row.uploaded_at = datetime.now(UTC)
+    db.commit()
+    return {"audio_file_id": row.id, "replayed": False}
+
+
+@router.get("/{episode_id}/audio/{kind}/download-url")
+def download_url(episode_id: str, kind: str, db: SessionDep, actor: ActorDep):
+    row = (
+        db.query(AudioFile)
+        .filter_by(episode_id=episode_id, kind=kind, status="ready")
         .order_by(AudioFile.uploaded_at.desc())
         .first()
     )
     if row is None:
         raise HTTPException(404, "no audio of that kind")
-
     if row.first_downloaded_at is None:
         row.first_downloaded_at = datetime.now(UTC)
         db.commit()
+        # SQLite hands back naive datetimes; they were written as UTC.
+        uploaded = row.uploaded_at.replace(tzinfo=row.uploaded_at.tzinfo or UTC)
         log.info(
             "handoff_completed",
             episode_id=episode_id,
-            hours=(row.first_downloaded_at - row.uploaded_at).total_seconds() / 3600,
+            hours=(row.first_downloaded_at - uploaded).total_seconds() / 3600,
         )
-
-    return StreamingResponse(
-        storage().open(row.storage_key),
-        media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f'attachment; filename="{kind}-{episode_id[:8]}.wav"'
-        },
-    )
+    return {
+        "url": get_storage().presign_download(
+            key=row.storage_key, filename=f"{kind}.wav", expires_in=900
+        )
+    }

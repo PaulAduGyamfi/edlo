@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.app.middleware import TraceMiddleware
-from apps.api.app.routes import audio, episodes
+from apps.api.app.routes import audio, dev_storage, episodes
 from edlo.config import get_settings
 from edlo.logging import configure_logging, log
 
@@ -23,6 +23,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Edlo API", version="0.1.0", lifespan=lifespan)
 app.include_router(episodes.router)
 app.include_router(audio.router)
+if settings.storage_backend == "local":
+    app.include_router(dev_storage.router)
 app.add_middleware(TraceMiddleware)
 app.add_middleware(
     CORSMiddleware,

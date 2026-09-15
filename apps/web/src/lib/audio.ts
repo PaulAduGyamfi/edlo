@@ -40,3 +40,11 @@ export function validateAudioFile(file: File): ApiError | null {
   }
   return null;
 }
+
+/** SHA-256 of the whole file: hex for the API's complete call, base64 for S3's checksum field. */
+export async function sha256(file: File): Promise<{ hex: string; base64: string }> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+  const hex = Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
+  const base64 = btoa(String.fromCharCode(...digest));
+  return { hex, base64 };
+}

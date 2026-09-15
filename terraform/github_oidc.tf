@@ -86,9 +86,9 @@ resource "aws_iam_role_policy" "github_actions" {
         Action   = ["logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents"]
         Resource = "*"
       },
-            {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+      {
+        Effect = "Allow"
+        Action = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [
           "arn:aws:s3:::edlo-web-production",
           "arn:aws:s3:::edlo-web-production/*",

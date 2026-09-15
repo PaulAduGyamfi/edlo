@@ -35,10 +35,9 @@ resource "aws_ecs_task_definition" "api" {
     environment = [
       { name = "ENVIRONMENT", value = var.environment },
       { name = "LOG_LEVEL", value = "INFO" },
-    ]
-
-    environment = [
-      { name = "ENVIRONMENT", value = var.environment }, { name = "LOG_LEVEL", value = "INFO" },
+      { name = "STORAGE_BACKEND", value = "s3" },
+      { name = "S3_BUCKET", value = aws_s3_bucket.media.bucket },
+      { name = "S3_REGION", value = var.region },
     ]
     secrets = [
       { name = "DATABASE_URL"

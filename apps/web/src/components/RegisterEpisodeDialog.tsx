@@ -63,11 +63,11 @@ export function RegisterEpisodeDialog({
     );
     upload.current = u;
     try {
-      const result = await u.promise;
+      await u.promise;
       toast.push({
         kind: "success",
         title: `Registered “${episode.title}”`,
-        detail: `${file.name} (${fmtBytes(result.size_bytes)}) uploaded${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
+        detail: `${file.name} (${fmtBytes(file.size)}) uploaded${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
       });
       onCreated(episode);
     } catch (err) {

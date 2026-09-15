@@ -104,8 +104,11 @@ class AudioFile(Base):
     episode_id: Mapped[str] = mapped_column(String(32), index=True)
     kind: Mapped[str] = mapped_column(String(16))  # rough | final
     storage_key: Mapped[str] = mapped_column(String(300))
-    size_bytes: Mapped[int] = mapped_column(BigInteger)
-    checksum: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(
+        String(16), default="pending"
+    )  # pending | ready
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
     uploaded_by: Mapped[str] = mapped_column(String(64))
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow

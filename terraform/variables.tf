@@ -22,3 +22,7 @@ variable "github_repo" {
   type        = string
   description = "The repo portion of the OIDC subject claim, including GitHub's numeric owner and repo IDs (e.g. owner@123/repo@456). Decode the token in a workflow run to find it."
 }
+variable "web_origin" {
+  type        = string
+  description = "Browser origin allowed to upload directly to the media bucket (bucket CORS)."
+}

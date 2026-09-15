@@ -55,6 +55,7 @@ def test_no_route_is_unauthenticated(client):
         "/openapi.json",
         "/redoc",
         "/docs/oauth2-redirect",
+        "/dev/storage/{key:path}",  # stands in for presigned S3 URLs
     )
     for route in app.routes:
         dependant = getattr(route, "dependant", None)
