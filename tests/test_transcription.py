@@ -145,3 +145,30 @@ def test_transcription_failure_keeps_the_audio(client, db, local_storage, monkey
 
 def test_transcript_requires_a_bearer(client):
     assert client.get("/episodes/x/transcript").status_code == 401
+
+
+def test_playback_url_does_not_stamp_the_handoff(
+    client, db, local_storage, monkeypatch
+):
+    fake = artifact(
+        [seg(0, 0, 1000, "a"), seg(1, 1000, 2000, "b"), seg(2, 2000, 3000, "c")]
+    )
+    monkeypatch.setattr(
+        "apps.api.app.routes.audio.transcribe_file", lambda path, checksum: fake
+    )
+    ep = _episode(db)
+    target = _upload(client, ep.id)
+    done = client.post(
+        f"/episodes/{ep.id}/audio/complete",
+        json={"key": target["key"], "checksum_sha256": CHECKSUM},
+        headers=ALBERT,
+    ).json()
+
+    play = client.get(
+        f"/episodes/{ep.id}/audio/rough/download-url?stamp=false", headers=CHRIS
+    )
+    assert play.status_code == 200 and play.json()["url"]
+    assert db.get(AudioFile, done["audio_file_id"]).first_downloaded_at is None
+
+    client.get(f"/episodes/{ep.id}/audio/rough/download-url", headers=CHRIS)
+    assert db.get(AudioFile, done["audio_file_id"]).first_downloaded_at is not None

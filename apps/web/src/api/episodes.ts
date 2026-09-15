@@ -101,11 +101,12 @@ export const completeUpload = (id: string, body: { key: string; checksum_sha256:
     body: JSON.stringify(body),
   });
 
-export const getDownloadUrl = (id: string, kind: AudioKind) =>
-  api<{ url: string }>(`/episodes/${id}/audio/${kind}/download-url`);
+/** stamp=false fetches a URL for in-browser playback without counting as the handoff. */
+export const getDownloadUrl = (id: string, kind: AudioKind, opts: { stamp?: boolean } = {}) =>
+  api<{ url: string }>(`/episodes/${id}/audio/${kind}/download-url${opts.stamp === false ? "?stamp=false" : ""}`);
 
-// Local storage hands back a path on the API; S3 hands back an absolute URL.
-const absolute = (url: string) => (url.startsWith("/") ? `${API_BASE}${url}` : url);
+/** Local storage hands back a path on the API; S3 hands back an absolute URL. */
+export const storageUrl = (url: string) => (url.startsWith("/") ? `${API_BASE}${url}` : url);
 
 function storageError(xhr: XMLHttpRequest): string {
   // S3 answers with XML: <Error><Code>…</Code><Message>…</Message></Error>
@@ -132,7 +133,7 @@ function transfer(
   onProgress?: (fraction: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    xhr.open(target.method, absolute(target.url));
+    xhr.open(target.method, storageUrl(target.url));
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress?.(e.loaded / e.total);
     };
@@ -195,7 +196,7 @@ export async function downloadAudio(id: string, kind: AudioKind): Promise<string
   const { url } = await getDownloadUrl(id, kind);
   const filename = `${kind}.wav`; // what the server puts in Content-Disposition
   const a = document.createElement("a");
-  a.href = absolute(url);
+  a.href = storageUrl(url);
   a.download = filename;
   document.body.appendChild(a);
   a.click();

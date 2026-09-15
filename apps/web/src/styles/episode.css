@@ -490,28 +490,55 @@
   gap: 12px;
 }
 
-.tx-tools {
+.tx-player {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.tx-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+.tx-play {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  font: 700 12px/1 var(--sans);
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(255, 122, 26, 0.28);
+  cursor: pointer;
 }
 
-.tx-chip {
-  font: 600 9.5px/1 var(--mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 8px;
+.tx-play:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tx-play:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.tx-clock {
+  font: 600 13px/1 var(--mono);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-clock-total {
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.tx-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--accent-soft);
+  pointer-events: none;
 }
 
 .tx-search {
@@ -631,6 +658,10 @@
   gap: 12px;
   padding: 8px 12px;
   border-left: 2px solid transparent;
+}
+
+.tx-row {
+  cursor: pointer;
 }
 
 .tx-row:hover {

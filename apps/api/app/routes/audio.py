@@ -161,7 +161,10 @@ def complete_upload(
 
 
 @router.get("/{episode_id}/audio/{kind}/download-url")
-def download_url(episode_id: str, kind: str, db: SessionDep, actor: ActorDep):
+def download_url(
+    episode_id: str, kind: str, db: SessionDep, actor: ActorDep, stamp: bool = True
+):
+    """stamp=false is for in-browser playback, which is not the handoff."""
     row = (
         db.query(AudioFile)
         .filter_by(episode_id=episode_id, kind=kind, status="ready")
@@ -170,7 +173,7 @@ def download_url(episode_id: str, kind: str, db: SessionDep, actor: ActorDep):
     )
     if row is None:
         raise HTTPException(404, "no audio of that kind")
-    if row.first_downloaded_at is None:
+    if stamp and row.first_downloaded_at is None:
         row.first_downloaded_at = datetime.now(UTC)
         db.commit()
         # SQLite hands back naive datetimes; they were written as UTC.
