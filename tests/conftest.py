@@ -2,16 +2,22 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from apps.api.app.deps import SessionDep  # noqa
 from apps.api.app.main import app
 from edlo.db import Base, get_session
 from edlo.domain.roles import Actor, Role
+from edlo.storage.local import LocalStorage
 
 
 @pytest.fixture
 def db():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
+    # One shared connection: TestClient runs sync routes on a worker thread,
+    # and a per-thread in-memory SQLite would be a different, empty database.
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     Base.metadata.create_all(engine)
     with sessionmaker(engine, expire_on_commit=False)() as s:
         yield s
@@ -37,3 +43,14 @@ def chris():
 @pytest.fixture
 def paul():
     return Actor(id="u_paul", name="Paul", role=Role.OWNER)
+
+
+@pytest.fixture
+def local_storage(tmp_path, monkeypatch):
+    """Point every route at a throwaway storage root."""
+    storage = LocalStorage(tmp_path / "uploads")
+    for module in ("audio", "dev_storage", "transcripts"):
+        monkeypatch.setattr(
+            f"apps.api.app.routes.{module}.get_storage", lambda: storage
+        )
+    return storage

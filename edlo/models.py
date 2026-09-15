@@ -116,3 +116,23 @@ class AudioFile(Base):
     first_downloaded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class Transcript(Base):
+    """Pointer to the transcript artifact in object storage. Rows stay small."""
+
+    __tablename__ = "transcripts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    audio_file_id: Mapped[str] = mapped_column(String(32), index=True)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    engine: Mapped[str] = mapped_column(String(64))
+    model_version: Mapped[str] = mapped_column(String(64))
+    language: Mapped[str] = mapped_column(String(16))
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    segment_count: Mapped[int] = mapped_column(Integer)
+    audio_checksum: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )

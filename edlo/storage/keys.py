@@ -8,7 +8,7 @@ from uuid import uuid4
 
 ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aiff", ".flac"}
 KEY_RE = re.compile(
-    r"^episodes/[a-f0-9]{32}/(rough|final)/[a-f0-9]{32}\.[a-z0-9]{2,5}$"
+    r"^episodes/[a-f0-9]{32}/(rough|final|transcript)/[a-f0-9]{32}\.[a-z0-9]{2,5}$"
 )
 
 

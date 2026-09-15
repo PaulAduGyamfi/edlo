@@ -63,7 +63,28 @@ export type UploadTarget = {
   expires_in: number;
 };
 
-export type UploadResult = { audio_file_id: string; replayed: boolean };
+export type UploadResult = {
+  audio_file_id: string;
+  replayed: boolean;
+  transcript_id: string | null;
+  transcript_error: string | null; // the audio is stored either way
+};
+
+export type TranscriptSegment = { index: number; start_ms: number; end_ms: number; text: string };
+
+export type Transcript = {
+  id: string;
+  audio_file_id: string;
+  created_at: string;
+  audio_checksum: string;
+  engine: string;
+  model_version: string;
+  language: string;
+  duration_ms: number;
+  segments: TranscriptSegment[];
+};
+
+export const getTranscript = (id: string) => api<Transcript>(`/episodes/${id}/transcript`);
 
 export const createUploadTarget = (
   id: string,

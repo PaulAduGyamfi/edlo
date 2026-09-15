@@ -1,3 +1,5 @@
+import os
+import tempfile
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -8,8 +10,13 @@ from apps.api.app.deps import ActorDep, SessionDep
 from edlo.config import get_settings
 from edlo.domain.roles import Role
 from edlo.logging import log
-from edlo.models import AudioFile, Episode
+from edlo.models import AudioFile, Episode, Transcript
 from edlo.storage import get_storage
+from edlo.transcription.engine import (
+    AudioDecodeError,
+    TranscriptTooShort,
+    transcribe_file,
+)
 
 router = APIRouter(prefix="/episodes", tags=["audio"])
 
@@ -89,12 +96,68 @@ def complete_upload(
     if row.status == "ready":
         return {"audio_file_id": row.id, "replayed": True}  # idempotent
 
+    checksum = obj.checksum_sha256 or body.checksum_sha256
     row.status = "ready"
     row.size_bytes = obj.size_bytes
-    row.checksum = obj.checksum_sha256
+    row.checksum = checksum
     row.uploaded_at = datetime.now(UTC)
     db.commit()
-    return {"audio_file_id": row.id, "replayed": False}
+
+    # Transcribe right here. Simplest thing that works.
+    fd, scratch = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    try:
+        get_storage().download_to_path(key=body.key, dest=scratch)
+        artifact = transcribe_file(scratch, checksum)
+    except (AudioDecodeError, TranscriptTooShort) as e:
+        # The audio is stored and ready; only the transcript is missing.
+        log.warning("transcription_failed", episode_id=episode_id, error=str(e))
+        return {
+            "audio_file_id": row.id,
+            "replayed": False,
+            "transcript_id": None,
+            "transcript_error": str(e),
+        }
+    finally:
+        os.unlink(scratch)  # the Protocol docstring said so
+
+    # Artifact in object storage, pointer in the database.
+    art_key = f"episodes/{episode_id}/transcript/{checksum[:32]}.json"
+    fd, tmp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(artifact.model_dump_json())
+        get_storage().upload_from_path(
+            key=art_key, src=tmp, content_type="application/json"
+        )
+    finally:
+        os.unlink(tmp)
+    transcript = Transcript(
+        audio_file_id=row.id,
+        episode_id=episode_id,
+        storage_key=art_key,
+        engine=artifact.engine,
+        model_version=artifact.model_version,
+        language=artifact.language,
+        duration_ms=artifact.duration_ms,
+        segment_count=len(artifact.segments),
+        audio_checksum=checksum,
+    )
+    db.add(transcript)
+    db.commit()
+    log.info(
+        "transcription_complete",
+        episode_id=episode_id,
+        transcript_id=transcript.id,
+        segments=len(artifact.segments),
+        duration_ms=artifact.duration_ms,
+    )
+    return {
+        "audio_file_id": row.id,
+        "replayed": False,
+        "transcript_id": transcript.id,
+        "transcript_error": None,
+    }
 
 
 @router.get("/{episode_id}/audio/{kind}/download-url")

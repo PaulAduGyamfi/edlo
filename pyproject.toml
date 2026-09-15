@@ -24,7 +24,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [[tool.mypy.overrides]]
-module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+module = ["boto3", "boto3.*", "botocore", "botocore.*", "faster_whisper", "faster_whisper.*"]
 ignore_missing_imports = true
 
 [tool.ruff.lint.per-file-ignores]

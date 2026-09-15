@@ -63,11 +63,14 @@ export function RegisterEpisodeDialog({
     );
     upload.current = u;
     try {
-      await u.promise;
+      const result = await u.promise;
+      const transcript = result.transcript_error
+        ? ` · transcription failed: ${result.transcript_error}`
+        : " · transcript ready";
       toast.push({
-        kind: "success",
+        kind: result.transcript_error ? "info" : "success",
         title: `Registered “${episode.title}”`,
-        detail: `${file.name} (${fmtBytes(file.size)}) uploaded${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
+        detail: `${file.name} (${fmtBytes(file.size)}) uploaded${transcript}${episode.publish_on ? ` · posting slot ${fmtDate(episode.publish_on)}` : ""}.`,
       });
       onCreated(episode);
     } catch (err) {
@@ -121,7 +124,11 @@ export function RegisterEpisodeDialog({
           <div className="upload-status">
             <span className="upload-name">{file?.name}</span>
             <span className="upload-meta">
-              {phase.step === "uploading" ? `Uploading rough mix… ${pct}%` : "Upload failed."}
+              {phase.step !== "uploading"
+                ? "Upload failed."
+                : phase.fraction >= 1
+                  ? "Transcribing rough mix… this takes a few minutes for a full episode."
+                  : `Uploading rough mix… ${pct}%`}
             </span>
             <span className="progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
               <i style={{ width: `${pct}%` }} />

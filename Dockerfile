@@ -7,7 +7,9 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     GIT_SHA=${GIT_SHA}
 
-RUN useradd --create-home --uid 10001 edlo
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 edlo
 
 WORKDIR /app
 

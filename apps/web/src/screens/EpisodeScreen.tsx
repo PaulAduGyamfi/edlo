@@ -5,6 +5,7 @@ import { ErrorPanel } from "../components/ErrorPanel";
 import { HistoryList } from "../components/HistoryList";
 import { SlotCalendar } from "../components/SlotCalendar";
 import { StagePanel } from "../components/StagePanel";
+import { TranscriptPanel } from "../components/TranscriptPanel";
 import { STAGE_LABEL } from "../domain/workflow";
 import { fmtDate, fmtDateLong } from "../lib/dates";
 import { type Episode, useEpisodes } from "../state/episodes";
@@ -129,6 +130,14 @@ function EpisodeBody({ episode }: { episode: Episode }) {
               <span className="sec-sub">Rough for the plan, final for the cut.</span>
             </header>
             <AudioPanel episode={episode} />
+          </section>
+
+          <section className="panel">
+            <header className="panel-head">
+              <h2 className="display-md">Transcript</h2>
+              <span className="sec-sub">Timecoded from the rough mix. Drag the timeline, or search.</span>
+            </header>
+            <TranscriptPanel key={episode.id} episodeId={episode.id} />
           </section>
         </div>
 

@@ -481,3 +481,207 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ---------- transcript ---------- */
+
+.tx {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tx-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tx-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tx-chip {
+  font: 600 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.tx-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.tx-search input {
+  font: 500 12px/1 var(--sans);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-width: 180px;
+}
+
+.tx-search input:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.tx-search-count {
+  font: 500 10.5px/1 var(--mono);
+  color: var(--muted);
+  min-width: 64px;
+  text-align: right;
+}
+
+/* The timeline: every segment is a blip, matches glow, the playhead follows the list. */
+
+.tx-scrub {
+  position: relative;
+  height: 46px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.tx-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--line-2);
+}
+
+.tx-tick span {
+  position: absolute;
+  top: 5px;
+  left: 4px;
+  font: 500 9px/1 var(--mono);
+  color: var(--faint);
+}
+
+.tx-blip {
+  position: absolute;
+  bottom: 8px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 1px;
+}
+
+.tx-blip-hit {
+  height: 18px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.tx-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  transition: left 80ms linear;
+}
+
+.tx-head span {
+  position: absolute;
+  top: 18px;
+  left: 6px;
+  font: 700 9.5px/1 var(--mono);
+  color: var(--text);
+  background: rgba(11, 11, 11, 0.85);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+
+.tx-list {
+  position: relative;
+  max-height: 440px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.tx-list:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.tx-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 12px;
+  border-left: 2px solid transparent;
+}
+
+.tx-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tx-row-now {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tx-row p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.tx-time {
+  align-self: start;
+  font: 500 10.5px/1.9 var(--mono);
+  color: var(--faint);
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: copy;
+}
+
+.tx-time:hover,
+.tx-row-now .tx-time {
+  color: var(--accent-2);
+}
+
+.tx-row mark {
+  color: var(--accent-2);
+  background: var(--accent-soft);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.tx-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.tx-head-flip span {
+  left: auto;
+  right: 6px;
+}
