@@ -3,17 +3,14 @@ from pathlib import PurePosixPath
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.exc import IntegrityError
 
 from apps.api.app.deps import ActorDep, SessionDep
-from apps.api.app.idempotency import fingerprint, lookup, remember
+from apps.api.app.submit import replay, submit_job
 from edlo.config import get_settings
 from edlo.domain.roles import Role
 from edlo.logging import log
-from edlo.models import AudioFile, Episode, Job
-from edlo.queue import enqueue
+from edlo.models import AudioFile, Episode
 from edlo.storage import get_storage
 
 router = APIRouter(prefix="/episodes", tags=["audio"])
@@ -86,18 +83,14 @@ def complete_upload(
 
     202: the transcript is produced by a worker; the response names the job.
     """
-    if not idempotency_key:
-        raise HTTPException(400, "Idempotency-Key header required")
-    route = f"POST /episodes/{episode_id}/audio/complete"
-    fp = fingerprint(body.model_dump_json().encode())
-    try:
-        stored = lookup(db, idempotency_key, route, fp)
-    except ValueError as e:
-        raise HTTPException(409, str(e))
+    fp, route, stored = replay(
+        db,
+        idempotency_key,
+        f"POST /episodes/{episode_id}/audio/complete",
+        body.model_dump_json().encode(),
+    )
     if stored is not None:
-        return JSONResponse(
-            stored, status_code=202, headers={"Idempotency-Replayed": "true"}
-        )
+        return stored
 
     obj = get_storage().head(body.key)
     if obj is None:
@@ -121,44 +114,19 @@ def complete_upload(
         db.commit()
 
     # One transcribe job per audio file, enforced by the unique constraint.
-    # Two concurrent completes produce one row and one IntegrityError; the
-    # loser returns the existing job.
-    job = Job(
+    log.info("audio_uploaded", episode_id=episode_id, kind=row.kind, actor=actor.id)
+    return submit_job(
+        db,
+        request,
         kind="transcribe",
         episode_id=episode_id,
         payload={"audio_file_id": row.id},
-        idempotency_key=row.id,
-        trace_id=request.state.trace_id,
+        job_key=row.id,
+        idempotency_key=idempotency_key or "",
+        route=route,
+        fp=fp,
+        extra={"audio_file_id": row.id},
     )
-    db.add(job)
-    created = True
-    try:
-        db.commit()  # job row committed FIRST
-    except IntegrityError:
-        db.rollback()
-        created = False
-        job = db.query(Job).filter_by(kind="transcribe", idempotency_key=row.id).one()
-    if created:
-        # Enqueue AFTER the commit. The reverse order lets a worker receive a
-        # message for a row that was never committed.
-        enqueue("transcribe", {"job_id": job.id, "audio_file_id": row.id})
-        log.info(
-            "audio_uploaded",
-            episode_id=episode_id,
-            kind=row.kind,
-            job_id=job.id,
-            actor=actor.id,
-        )
-
-    response = {
-        "audio_file_id": row.id,
-        "replayed": not created,
-        "job_id": job.id,
-        "poll_url": f"/jobs/{job.id}",
-    }
-    remember(db, idempotency_key, route, fp, response)
-    db.commit()
-    return JSONResponse(response, status_code=202)
 
 
 @router.get("/{episode_id}/audio/{kind}/download-url")

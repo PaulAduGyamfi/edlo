@@ -8,6 +8,8 @@ import { Dialog } from "../components/Dialog";
 import { ErrorDetail } from "../components/ErrorDetail";
 import { ErrorPanel } from "../components/ErrorPanel";
 import { HistoryList } from "../components/HistoryList";
+import { PlanPanel } from "../components/PlanPanel";
+import { PublishPanel } from "../components/PublishPanel";
 import { SlotCalendar } from "../components/SlotCalendar";
 import { StagePanel } from "../components/StagePanel";
 import { TranscriptPanel } from "../components/TranscriptPanel";
@@ -144,6 +146,22 @@ function EpisodeBody({ episode, go }: { episode: Episode; go: Go }) {
               <span className="sec-sub">Timecoded from the rough mix. Drag the timeline, or search.</span>
             </header>
             <TranscriptPanel key={episode.id} episodeId={episode.id} />
+          </section>
+
+          <section className="panel">
+            <header className="panel-head">
+              <h2 className="display-md">Plan</h2>
+              <span className="sec-sub">The model proposes, code validates, you decide.</span>
+            </header>
+            <PlanPanel key={episode.id} episode={episode} />
+          </section>
+
+          <section className="panel">
+            <header className="panel-head">
+              <h2 className="display-md">Publish</h2>
+              <span className="sec-sub">The pack, the policy check, and the owner's approval.</span>
+            </header>
+            <PublishPanel key={episode.id} episode={episode} />
           </section>
         </div>
 

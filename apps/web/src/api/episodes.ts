@@ -1,4 +1,4 @@
-import { API_BASE, api, detailOf, makeError, NETWORK_DETAIL } from "./client";
+import { API_BASE, api, authHeaders, detailOf, handleResponse, makeError, NETWORK_DETAIL } from "./client";
 import { sha256 } from "../lib/audio";
 
 export type Role = "audio_editor" | "video_editor" | "owner";
@@ -230,3 +230,132 @@ export async function downloadAudio(id: string, kind: AudioKind): Promise<string
   a.remove();
   return filename;
 }
+
+// ---- flags, plans, packs (chapters 20 and 22)
+
+export type Flag = {
+  id: string;
+  start_ms: number;
+  end_ms: number;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export const listFlags = (id: string) => api<Flag[]>(`/episodes/${id}/flags`);
+
+export const addFlag = (id: string, body: { start_ms: number; end_ms: number; note?: string | null }) =>
+  api<Flag>(`/episodes/${id}/flags`, { method: "POST", body: JSON.stringify(body) });
+
+export const deleteFlag = (id: string, flagId: string) =>
+  api<void>(`/episodes/${id}/flags/${flagId}`, { method: "DELETE" });
+
+export type Decision = "pending" | "accepted" | "rejected";
+
+export type CutItemView = {
+  id: string;
+  source: "human" | "model";
+  flag_id: string | null;
+  position: number;
+  start_ms: number;
+  end_ms: number;
+  edited_start_ms: number | null;
+  edited_end_ms: number | null;
+  quote: string;
+  reason: string | null;
+  confidence: number | null;
+  decision: Decision;
+};
+
+export type ColdOpenView = {
+  id: string;
+  position: number;
+  start_ms: number;
+  end_ms: number;
+  quote: string;
+  why: string | null;
+  confidence: number | null;
+  picked: boolean;
+};
+
+export type StepView = { id: string; position: number; label: string; done_at: string | null };
+
+export type PlanView = {
+  id: string;
+  status: "ready" | "ai_disabled";
+  prompt_version: string;
+  model: string;
+  windows: number;
+  proposed: number;
+  rejections: Record<string, number>;
+  generated_at: string;
+  items: CutItemView[];
+  cold_opens: ColdOpenView[];
+  steps: StepView[];
+};
+
+export type PlanResponse = PlanView | { status: "pending"; job: JobView };
+
+export const getPlan = (id: string) => api<PlanResponse>(`/episodes/${id}/plan`);
+
+/** One key per click: a retry of the same click replays, a new click regenerates. */
+export const generatePlan = (id: string) =>
+  api<{ job_id: string; poll_url: string; ai_enabled: boolean }>(`/episodes/${id}/plan`, {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+  });
+
+export const decideCut = (
+  id: string,
+  itemId: string,
+  body: { decision?: Decision; start_ms?: number; end_ms?: number },
+) => api<CutItemView>(`/episodes/${id}/plan/items/${itemId}`, { method: "POST", body: JSON.stringify(body) });
+
+export const pickColdOpen = (id: string, coldId: string, picked: boolean) =>
+  api<ColdOpenView>(`/episodes/${id}/plan/cold-opens/${coldId}`, {
+    method: "POST",
+    body: JSON.stringify({ picked }),
+  });
+
+export const tickStep = (id: string, stepId: string, done: boolean) =>
+  api<StepView>(`/episodes/${id}/plan/steps/${stepId}`, { method: "POST", body: JSON.stringify({ done }) });
+
+export async function getPlanExport(id: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/episodes/${id}/plan/export`, { headers: authHeaders() });
+  } catch {
+    throw makeError(0, NETWORK_DETAIL, null);
+  }
+  if (!res.ok) await handleResponse<never>(res); // throws
+  return res.text();
+}
+
+export type Violation = { rule: string; detail: string };
+
+export type PackView = {
+  id: string;
+  status: "ready" | "ai_disabled";
+  prompt_version: string;
+  model: string;
+  title: string;
+  description: string;
+  chapters: { start_ms: number; title: string }[];
+  links: string[];
+  sponsors: string[];
+  violations: Violation[];
+  generated_at: string;
+};
+
+export type PackResponse = PackView | { status: "pending"; job: JobView };
+
+export const getPack = (id: string) => api<PackResponse>(`/episodes/${id}/pack`);
+
+export const generatePack = (id: string) =>
+  api<{ job_id: string; poll_url: string; ai_enabled: boolean }>(`/episodes/${id}/pack`, {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+  });
+
+export const approveEpisode = (id: string) =>
+  api<{ id: string; stage: Stage; published_at: string }>(`/episodes/${id}/approve`, { method: "POST" });

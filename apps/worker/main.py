@@ -12,6 +12,7 @@ import signal
 import socket
 import tempfile
 import threading
+import time
 
 from edlo.config import get_settings
 from edlo.db import get_sessionmaker
@@ -23,13 +24,21 @@ from edlo.jobs import (
     mark_dead,
     mark_failed,
     mark_succeeded,
+    stale_queued_jobs,
 )
+from edlo.jobs.pack import generate_pack
+from edlo.jobs.plan import generate_plan
 from edlo.jobs.transcribe import transcribe_audio
 from edlo.logging import configure_logging, log
 from edlo.queue import get_queue
 from edlo.queue.base import JobQueue, Message
 
-HANDLERS = {"transcribe": transcribe_audio}
+HANDLERS = {
+    "transcribe": transcribe_audio,
+    "plan": generate_plan,
+    "pack": generate_pack,
+}
+RECONCILE_EVERY = 60
 WORKER_ID = f"{socket.gethostname()}-{os.getpid()}"
 _shutdown = threading.Event()
 
@@ -134,6 +143,16 @@ def process(queue: JobQueue, message: Message) -> None:
         stop.set()
 
 
+def reconcile(queue: JobQueue) -> int:
+    """Re-enqueue jobs whose message never arrived. Duplicates are safe."""
+    with get_sessionmaker()() as db:
+        stale = stale_queued_jobs(db)
+        for job in stale:
+            log.warning("reenqueue_stale_job", job_id=job.id, kind=job.kind)
+            queue.enqueue(job.kind, {"job_id": job.id, **job.payload})
+    return len(stale)
+
+
 def main() -> None:
     configure_logging()
     signal.signal(signal.SIGTERM, _sigterm)
@@ -141,7 +160,14 @@ def main() -> None:
     queue = get_queue()
     sweep_scratch()
     log.info("worker_started", worker=WORKER_ID, backend=get_settings().queue_backend)
+    last_reconcile = time.monotonic()
     while not _shutdown.is_set():
+        if time.monotonic() - last_reconcile > RECONCILE_EVERY:
+            last_reconcile = time.monotonic()
+            try:
+                reconcile(queue)
+            except Exception as e:  # noqa: BLE001 - a failed sweep is not a failed worker
+                log.warning("reconcile_failed", error=f"{type(e).__name__}: {e}")
         try:
             messages = queue.receive(max_messages=1, wait_seconds=20)
         except Exception as e:  # noqa: BLE001 - the loop outlives any single failed poll

@@ -71,6 +71,10 @@ def change_stage(
     ep = db.get(Episode, episode_id)
     if ep is None:
         raise HTTPException(404, "episode not found")
+    if body.to_stage == "published":
+        raise HTTPException(
+            409, "publishing goes through approval: POST /episodes/{id}/approve"
+        )
     try:
         WorkflowService(db).transition(
             ep, body.to_stage, actor, body.reason, request.state.trace_id

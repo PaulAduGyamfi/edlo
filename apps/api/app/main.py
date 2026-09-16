@@ -5,7 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.app.middleware import TraceMiddleware
-from apps.api.app.routes import audio, dev_storage, episodes, jobs, transcripts
+from apps.api.app.routes import (
+    audio,
+    dev_storage,
+    episodes,
+    flags,
+    jobs,
+    plans,
+    publish,
+    transcripts,
+)
 from edlo.config import get_settings
 from edlo.logging import configure_logging, log
 
@@ -25,6 +34,9 @@ app.include_router(episodes.router)
 app.include_router(audio.router)
 app.include_router(transcripts.router)
 app.include_router(jobs.router)
+app.include_router(flags.router)
+app.include_router(plans.router)
+app.include_router(publish.router)
 if settings.storage_backend == "local":
     app.include_router(dev_storage.router)
 app.add_middleware(TraceMiddleware)

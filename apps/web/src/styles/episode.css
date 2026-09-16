@@ -654,7 +654,7 @@
 
 .tx-row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr) 28px;
   gap: 12px;
   padding: 8px 12px;
   border-left: 2px solid transparent;
@@ -760,4 +760,283 @@
 
 .panel-danger {
   border-color: rgba(255, 61, 46, 0.25);
+}
+
+
+.tx-flag {
+  align-self: start;
+  font: 500 13px/1.6 var(--sans);
+  color: var(--faint);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.tx-row:hover .tx-flag,
+.tx-row-now .tx-flag,
+.tx-flag:focus-visible {
+  opacity: 1;
+}
+
+.tx-flag:hover {
+  color: var(--yellow);
+}
+
+.tx-blip-flag {
+  bottom: 24px;
+  height: 6px;
+  background: var(--yellow);
+  border-radius: 3px;
+}
+
+.tx-flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.tx-flags li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tx-flag-who {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.tx-flag-note {
+  color: var(--muted);
+}
+
+.tx-flag-x {
+  margin-left: auto;
+  color: var(--faint);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ---------- plan and pack ---------- */
+
+.plan,
+.pack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plan-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.plan-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.plan-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-sub {
+  margin: 0;
+  font: 800 15px/1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.plan-sub span {
+  margin-left: 8px;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.cuts,
+.colds,
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cut,
+.cold {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  border-radius: 8px;
+}
+
+.cut-human {
+  border-left-color: var(--yellow);
+}
+
+.cut-accepted {
+  border-left-color: var(--green);
+}
+
+.cut-rejected {
+  opacity: 0.55;
+}
+
+.cold-picked {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cut-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font: 500 10.5px/1 var(--mono);
+  color: var(--muted);
+}
+
+.cut-source-human {
+  color: var(--yellow);
+}
+
+.cut-time s {
+  margin-left: 6px;
+  color: var(--faint);
+}
+
+.cut-decision {
+  margin-left: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cut-decision-accepted {
+  color: var(--green);
+}
+
+.cut-decision-rejected {
+  color: var(--red);
+}
+
+.cut-quote {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.cut-reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cut-edit {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cut-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: 500 10.5px/1 var(--mono);
+  color: var(--muted);
+}
+
+.cut-edit input {
+  width: 90px;
+  font: 500 12px/1 var(--sans);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.step-row label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.step-row-done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.plan-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.violations {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.pack-fields {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.pack-fields dt {
+  font: 500 10.5px/1.8 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pack-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pack-description {
+  white-space: pre-wrap;
+}
+
+.chapters {
+  margin: 0;
+  padding-left: 18px;
 }

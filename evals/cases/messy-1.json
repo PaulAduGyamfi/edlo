@@ -1,0 +1,82 @@
+{
+  "id": "messy-1",
+  "bucket": "messy_speech",
+  "transcript": {
+    "duration_ms": 30000,
+    "segments": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 5000,
+        "text": "So, um, welcome, welcome back to the, uh, the Sozzled Pod."
+      },
+      {
+        "index": 1,
+        "start_ms": 5000,
+        "end_ms": 10000,
+        "text": "This week we're, we're talking about, hang on, what were we talking about."
+      },
+      {
+        "index": 2,
+        "start_ms": 10000,
+        "end_ms": 15000,
+        "text": "The ATEM, the ATEM Mini Pro, right, and why the, uh, the mix keeps arriving late."
+      },
+      {
+        "index": 3,
+        "start_ms": 15000,
+        "end_ms": 20000,
+        "text": "Yeah so the posting slot thing, it, it changed everything, honestly it did."
+      },
+      {
+        "index": 4,
+        "start_ms": 20000,
+        "end_ms": 25000,
+        "text": "Sorry my mic just fell over, give me a second, okay, okay we're back."
+      },
+      {
+        "index": 5,
+        "start_ms": 25000,
+        "end_ms": 30000,
+        "text": "Where was I, right, the first episode we scheduled went out on time."
+      }
+    ]
+  },
+  "human_flags": [],
+  "model_cuts": [
+    {
+      "start_ms": 0,
+      "end_ms": 5000,
+      "exact_quote": "So, um, welcome, welcome back to the, uh, the Sozzled Pod.",
+      "reason": "false start",
+      "confidence": 0.8
+    },
+    {
+      "start_ms": 20000,
+      "end_ms": 25000,
+      "exact_quote": "Sorry my mic just fell over, give me a second, okay, okay we're back.",
+      "reason": "mic fell",
+      "confidence": 0.8
+    },
+    {
+      "start_ms": 5000,
+      "end_ms": 10000,
+      "exact_quote": "This week we're talking about the mix",
+      "reason": "paraphrased",
+      "confidence": 0.8
+    }
+  ],
+  "model_cold_opens": [],
+  "pack": {
+    "links": [],
+    "sponsors": [],
+    "chapters": []
+  },
+  "expect": {
+    "rejected_rules": {
+      "quote_not_in_transcript": 1
+    },
+    "kept_model_cuts": 2,
+    "kept_cold_opens": 0
+  }
+}

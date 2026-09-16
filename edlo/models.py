@@ -7,8 +7,10 @@ from uuid import uuid4
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     Date,
     DateTime,
+    Float,
     Index,
     Integer,
     String,
@@ -201,5 +203,113 @@ class IdempotencyRecord(Base):
     request_fingerprint: Mapped[str] = mapped_column(String(64))
     response_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class Flag(Base):
+    """
+    A moment a human marked. Never subject to grounding, never dropped by a
+    model rule (ADR-004): a person heard it, and there may be no transcript
+    text at all -- a mic pop, a laugh, a dog.
+    """
+
+    __tablename__ = "flags"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class Plan(Base):
+    """One generation of cuts and cold opens. Regenerating replaces it."""
+
+    __tablename__ = "plans"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(
+        String(32), default="ready"
+    )  # ready | ai_disabled
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128), default="")
+    windows: Mapped[int] = mapped_column(Integer, default=0)
+    proposed: Mapped[int] = mapped_column(
+        Integer, default=0
+    )  # model candidates before validation
+    rejections: Mapped[dict[str, Any]] = mapped_column(
+        JSON, default=dict
+    )  # rule -> count
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class CutItem(Base):
+    __tablename__ = "cut_items"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    plan_id: Mapped[str] = mapped_column(String(32), index=True)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    source: Mapped[str] = mapped_column(String(16))  # human | model
+    flag_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    position: Mapped[int] = mapped_column(Integer)
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    quote: Mapped[str] = mapped_column(Text, default="")
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    decision: Mapped[str] = mapped_column(
+        String(16), default="pending"
+    )  # pending | accepted | rejected
+    # Chris can edit the span without losing what was proposed.
+    edited_start_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    edited_end_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class ColdOpen(Base):
+    __tablename__ = "cold_opens"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    plan_id: Mapped[str] = mapped_column(String(32), index=True)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    quote: Mapped[str] = mapped_column(Text)
+    why: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    picked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PublishingPack(Base):
+    """The model's draft copy, with the policy check's findings stored beside it."""
+
+    __tablename__ = "publishing_packs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    episode_id: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(
+        String(32), default="ready"
+    )  # ready | ai_disabled
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128), default="")
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    chapters: Mapped[list[Any]] = mapped_column(
+        JSON, default=list
+    )  # [{start_ms, title}]
+    links: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    sponsors: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    violations: Mapped[list[Any]] = mapped_column(
+        JSON, default=list
+    )  # [{rule, detail}]
+    generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

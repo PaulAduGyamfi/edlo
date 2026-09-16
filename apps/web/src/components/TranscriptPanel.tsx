@@ -1,9 +1,20 @@
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type ApiError, makeError, toApiError } from "../api/client";
-import { getDownloadUrl, getTranscript, type JobView, storageUrl, type Transcript } from "../api/episodes";
+import {
+  addFlag,
+  deleteFlag,
+  type Flag,
+  getDownloadUrl,
+  getTranscript,
+  type JobView,
+  listFlags,
+  storageUrl,
+  type Transcript,
+} from "../api/episodes";
 import { useJob } from "../hooks/useJob";
-import { useToast } from "../state/toast";
+import { fmtTime } from "../lib/time";
+import { errorToast, useToast } from "../state/toast";
 import { Banner } from "./Banner";
 import { ErrorDetail } from "./ErrorDetail";
 
@@ -16,15 +27,6 @@ type State =
 
 const RATES = [1, 1.25, 1.5, 2];
 const SKIP_MS = 5000;
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-function fmtTime(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
-}
 
 /** Tick spacing that gives the timeline six to ten labels. */
 function tickStep(durationMs: number): number {
@@ -137,6 +139,39 @@ function TranscriptView({ episodeId, transcript }: { episodeId: string; transcri
   const [audioError, setAudioError] = useState<ApiError | null>(null);
   const [query, setQuery] = useState("");
   const [hit, setHit] = useState({ q: "", pos: 0 });
+  const [flags, setFlags] = useState<Flag[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listFlags(episodeId).then(
+      (rows) => {
+        if (!cancelled) setFlags(rows);
+      },
+      () => undefined, // flags are decoration here; the plan shows them properly
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [episodeId]);
+
+  async function flagSegment(start_ms: number, end_ms: number) {
+    try {
+      const flag = await addFlag(episodeId, { start_ms, end_ms });
+      setFlags((f) => [...f, flag].sort((a, b) => a.start_ms - b.start_ms));
+      toast.push({ kind: "info", title: `Flagged ${fmtTime(start_ms)}`, detail: "It will be a cut in the plan, and no model rule can drop it." });
+    } catch (e) {
+      toast.push(errorToast(e, "Couldn't flag that line"));
+    }
+  }
+
+  async function unflag(flag: Flag) {
+    try {
+      await deleteFlag(episodeId, flag.id);
+      setFlags((f) => f.filter((x) => x.id !== flag.id));
+    } catch (e) {
+      toast.push(errorToast(e, "Couldn't remove the flag"));
+    }
+  }
 
   const q = query.trim().toLowerCase();
   const findHits = useCallback(
@@ -490,6 +525,14 @@ function TranscriptView({ episodeId, transcript }: { episodeId: string; transcri
             style={{ left: pct(s.start_ms), width: `max(2px, ${pct(s.end_ms - s.start_ms)})` }}
           />
         ))}
+        {flags.map((f) => (
+          <i
+            key={f.id}
+            className="tx-blip tx-blip-flag"
+            title={`Flagged ${fmtTime(f.start_ms)}${f.note ? `: ${f.note}` : ""}`}
+            style={{ left: pct(f.start_ms), width: `max(3px, ${pct(f.end_ms - f.start_ms)})` }}
+          />
+        ))}
         <i ref={headRef} className={`tx-head${timeMs / duration_ms > 0.8 ? " tx-head-flip" : ""}`} style={{ left: pct(timeMs) }}>
           <span>{fmtTime(timeMs)}</span>
         </i>
@@ -517,14 +560,43 @@ function TranscriptView({ episodeId, transcript }: { episodeId: string; transcri
             <p>
               <Highlight text={s.text} q={q} />
             </p>
+            <button
+              type="button"
+              className="tx-flag"
+              title="Flag this moment for the cut list"
+              aria-label={`Flag ${fmtTime(s.start_ms)}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                void flagSegment(s.start_ms, s.end_ms);
+              }}
+            >
+              ⚑
+            </button>
           </div>
         ))}
       </div>
 
+      {flags.length > 0 && (
+        <ul className="tx-flags" aria-label="Flagged moments">
+          {flags.map((f) => (
+            <li key={f.id}>
+              <span className="cut-time">
+                ⚑ {fmtTime(f.start_ms)}–{fmtTime(f.end_ms)}
+              </span>
+              <span className="tx-flag-who">{f.created_by.replace(/^u_/, "")}</span>
+              {f.note && <span className="tx-flag-note">{f.note}</span>}
+              <button type="button" className="tx-flag-x" aria-label="Remove flag" onClick={() => void unflag(f)}>
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <p className="tx-foot">
         <span>
-          Click a line to play from it · drag the timeline to seek · Space plays, ← → skip 5s, ↑ ↓ step a line · Enter jumps
-          between matches · click a timecode to copy it.
+          Click a line to play from it · ⚑ flags it for the plan · drag the timeline to seek · Space plays, ← → skip
+          5s, ↑ ↓ step a line · Enter jumps between matches · click a timecode to copy it.
         </span>
         <span>
           {transcript.engine} · {transcript.model_version} · {transcript.language}

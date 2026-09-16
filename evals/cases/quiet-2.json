@@ -1,0 +1,72 @@
+{
+  "id": "quiet-2",
+  "bucket": "no_strong_cold_open",
+  "transcript": {
+    "duration_ms": 30000,
+    "segments": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 5000,
+        "text": "Okay so this is a bit of a housekeeping episode."
+      },
+      {
+        "index": 1,
+        "start_ms": 5000,
+        "end_ms": 10000,
+        "text": "We are going to go through the schedule for the next quarter."
+      },
+      {
+        "index": 2,
+        "start_ms": 10000,
+        "end_ms": 15000,
+        "text": "There are six recordings planned and we need to agree the dates."
+      },
+      {
+        "index": 3,
+        "start_ms": 15000,
+        "end_ms": 20000,
+        "text": "The first one is the tenth, then the twenty fourth, then the seventh of the month after."
+      },
+      {
+        "index": 4,
+        "start_ms": 20000,
+        "end_ms": 25000,
+        "text": "Albert, can you do the twenty fourth, because I know you are away."
+      },
+      {
+        "index": 5,
+        "start_ms": 25000,
+        "end_ms": 30000,
+        "text": "I can do the twenty fourth if we record in the morning."
+      }
+    ]
+  },
+  "human_flags": [],
+  "model_cuts": [],
+  "model_cold_opens": [
+    {
+      "start_ms": 0,
+      "end_ms": 5000,
+      "exact_quote": "Okay so this is a bit of a housekeeping episode.",
+      "why": "start",
+      "confidence": 0.3
+    },
+    {
+      "start_ms": 10000,
+      "end_ms": 15000,
+      "exact_quote": "There are six recordings planned and we need to agree the dates.",
+      "why": "numbers",
+      "confidence": 0.2
+    }
+  ],
+  "pack": {
+    "links": [],
+    "sponsors": [],
+    "chapters": []
+  },
+  "expect": {
+    "kept_cold_opens": 2,
+    "max_cold_open_confidence": 0.3
+  }
+}

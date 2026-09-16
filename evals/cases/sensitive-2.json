@@ -1,0 +1,84 @@
+{
+  "id": "sensitive-2",
+  "bucket": "sensitive_topic",
+  "transcript": {
+    "duration_ms": 30000,
+    "segments": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 5000,
+        "text": "Before we start, we want to talk about the accident at the venue last month."
+      },
+      {
+        "index": 1,
+        "start_ms": 5000,
+        "end_ms": 10000,
+        "text": "Everyone is okay now, but it was frightening, and we are not going to make jokes about it."
+      },
+      {
+        "index": 2,
+        "start_ms": 10000,
+        "end_ms": 15000,
+        "text": "The venue has been very good to us and we are going back in the spring."
+      },
+      {
+        "index": 3,
+        "start_ms": 15000,
+        "end_ms": 20000,
+        "text": "Right, on to the episode, this week we are talking about microphones again."
+      },
+      {
+        "index": 4,
+        "start_ms": 20000,
+        "end_ms": 25000,
+        "text": "Chris has strong opinions about dynamic microphones and he is going to share them."
+      },
+      {
+        "index": 5,
+        "start_ms": 25000,
+        "end_ms": 30000,
+        "text": "I do have strong opinions and they are correct."
+      }
+    ]
+  },
+  "human_flags": [],
+  "model_cuts": [
+    {
+      "start_ms": 5000,
+      "end_ms": 10000,
+      "exact_quote": "it was frightening and we laughed about it",
+      "reason": "misleading",
+      "confidence": 0.9
+    }
+  ],
+  "model_cold_opens": [
+    {
+      "start_ms": 5000,
+      "end_ms": 10000,
+      "exact_quote": "we are going to make jokes about it",
+      "why": "clip",
+      "confidence": 0.9
+    }
+  ],
+  "pack": {
+    "links": [
+      "https://the-venue-that-sued-us.example"
+    ],
+    "sponsors": [
+      "VenueCo Insurance"
+    ],
+    "chapters": []
+  },
+  "expect": {
+    "rejected_rules": {
+      "quote_not_in_transcript": 2
+    },
+    "kept_model_cuts": 0,
+    "kept_cold_opens": 0,
+    "pack_violations": [
+      "invented_link",
+      "unverified_sponsor"
+    ]
+  }
+}

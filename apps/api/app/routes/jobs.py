@@ -30,9 +30,10 @@ class JobView(BaseModel):
     user_message: str | None = None
     created_at: datetime
     finished_at: datetime | None = None
+    queue_position: int | None = None  # backpressure, communicated
 
 
-def job_view(job: Job) -> JobView:
+def job_view(job: Job, position: int | None = None) -> JobView:
     message = None
     if job.status == "dead":
         message = USER_MESSAGES.get(job.error_class or "", DEAD_FALLBACK)
@@ -46,6 +47,7 @@ def job_view(job: Job) -> JobView:
         user_message=message,
         created_at=job.created_at,
         finished_at=job.finished_at,
+        queue_position=position,
     )
 
 
@@ -54,4 +56,11 @@ def get_job(job_id: str, db: SessionDep, actor: ActorDep) -> JobView:
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(404, "job not found")
-    return job_view(job)
+    position = None
+    if job.status == "queued":
+        position = (
+            db.query(Job)
+            .filter(Job.status == "queued", Job.created_at <= job.created_at)
+            .count()
+        )
+    return job_view(job, position)

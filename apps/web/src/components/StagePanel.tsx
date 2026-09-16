@@ -28,7 +28,6 @@ export function StagePanel({ episode, onMoved }: { episode: Episode; onMoved: ()
   const toast = useToast();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<Stage | null>(null);
-  const [confirm, setConfirm] = useState<Stage | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
   const stage = episode.stage;
@@ -37,7 +36,6 @@ export function StagePanel({ episode, onMoved }: { episode: Episode; onMoved: ()
     if (busy) return;
     setBusy(to);
     setError(null);
-    setConfirm(null);
     try {
       const summary = await changeStage(episode.id, to, reason.trim() || null);
       patch(summary, { stage: to });
@@ -63,7 +61,8 @@ export function StagePanel({ episode, onMoved }: { episode: Episode; onMoved: ()
     );
   }
 
-  const moves = movesFrom(stage, me.role);
+  // Publishing goes through approval in the Publish panel; the server refuses it here.
+  const moves = movesFrom(stage, me.role).filter((m) => m.to !== "published");
   const currentIndex = PIPELINE.indexOf(stage);
 
   return (
@@ -109,7 +108,7 @@ export function StagePanel({ episode, onMoved }: { episode: Episode; onMoved: ()
                 className={`btn${m.kind === "forward" || m.kind === "unblock" ? " btn-accent" : ""}${m.kind === "block" ? " btn-quiet" : ""}`}
                 disabled={!m.allowed || busy !== null}
                 title={m.why ?? undefined}
-                onClick={() => (m.to === "published" ? setConfirm("published") : void move(m.to))}
+                onClick={() => void move(m.to)}
               >
                 {busy === m.to ? "Moving…" : BUTTON_LABEL(m)}
               </button>
@@ -123,16 +122,8 @@ export function StagePanel({ episode, onMoved }: { episode: Episode; onMoved: ()
                 .join(" ")}
             </p>
           )}
-          {confirm === "published" && (
-            <div className="confirm">
-              <span>Mark this episode published? This cannot be undone.</span>
-              <button type="button" className="btn btn-sm" onClick={() => setConfirm(null)}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-sm btn-green" onClick={() => void move("published")}>
-                Yes, publish
-              </button>
-            </div>
+          {stage === "review" && (
+            <p className="moves-note">Publishing happens in the Publish panel below, once the owner approves the pack.</p>
           )}
           {error && (
             <Banner kind="error">

@@ -23,7 +23,13 @@ def engine(tmp_path, monkeypatch):
     )
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
-    for module in ("edlo.db", "edlo.jobs.transcribe", "apps.worker.main"):
+    for module in (
+        "edlo.db",
+        "edlo.jobs.transcribe",
+        "edlo.jobs.plan",
+        "edlo.jobs.pack",
+        "apps.worker.main",
+    ):
         monkeypatch.setattr(f"{module}.get_sessionmaker", lambda: factory)
     yield engine
     engine.dispose()
@@ -67,6 +73,7 @@ def local_storage(tmp_path, monkeypatch):
         "apps.api.app.routes.dev_storage",
         "apps.api.app.routes.transcripts",
         "edlo.jobs.transcribe",
+        "edlo.jobs.plan",
     ):
         monkeypatch.setattr(f"{module}.get_storage", lambda: storage)
     return storage
@@ -84,7 +91,7 @@ def queue(monkeypatch):
     )
     monkeypatch.setattr("edlo.queue.get_queue", lambda: q)
     monkeypatch.setattr(
-        "apps.api.app.routes.audio.enqueue",
+        "apps.api.app.submit.enqueue",
         lambda kind, payload: q.enqueue(kind, payload),
     )
     return q

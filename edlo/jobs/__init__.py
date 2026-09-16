@@ -142,3 +142,22 @@ def mark_dead(db: Session, job_id: str, exc: BaseException) -> None:
     job.lease_owner = None
     job.lease_expires_at = None
     db.commit()
+
+
+def stale_queued_jobs(
+    db: Session, older_than: timedelta = timedelta(minutes=2)
+) -> list[Job]:
+    """
+    Commit-then-enqueue can lose the enqueue (the network is not reliable).
+    Rather than a full transactional outbox, a reconciler re-enqueues any job
+    still `queued` after two minutes; the idempotent claim makes a duplicate
+    message harmless.
+    """
+    cutoff = datetime.now(UTC) - older_than
+    return (
+        db.query(Job)
+        .filter(Job.status == "queued", Job.attempt == 0, Job.created_at < cutoff)
+        .order_by(Job.created_at)
+        .limit(100)
+        .all()
+    )
