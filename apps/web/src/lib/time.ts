@@ -13,3 +13,11 @@ export const fmtTimeMs = (ms: number) => `${fmtTime(ms)}.${String(ms % 1000).pad
 
 export const toSeconds = (ms: number) => (ms / 1000).toFixed(1);
 export const fromSeconds = (s: string) => Math.round(Number.parseFloat(s) * 1000);
+
+/** 42s, 21m 03s, 1h 12m — how long something has been going on. */
+export function fmtDur(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}

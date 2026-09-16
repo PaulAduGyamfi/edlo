@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 from apps.worker.main import process
 from edlo.models import (
@@ -11,19 +11,23 @@ from edlo.models import (
 )
 from tests.test_transcription import ALBERT, CHRIS, FAKE, _complete, _upload
 
+# Relative, so the auto-assigned slot is never behind the clock.
+RECORDED_ON = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+
 PAUL = {"Authorization": "Bearer paul-token"}
 
 
 def _registered(client, title="Doomed") -> dict:
     return client.post(
-        "/episodes", json={"title": title, "recorded_on": "2026-09-01"}, headers=ALBERT
+        "/episodes", json={"title": title, "recorded_on": RECORDED_ON}, headers=ALBERT
     ).json()
 
 
 def _transcribed(client, db, queue, monkeypatch, title="Doomed") -> dict:
     """An episode with audio, a finished job, a transcript and a history."""
     monkeypatch.setattr(
-        "edlo.jobs.transcribe.transcribe_file", lambda path, checksum: FAKE
+        "edlo.jobs.transcribe.transcribe_file",
+        lambda path, checksum, on_progress=None: FAKE,
     )
     ep = _registered(client, title)
     target = _upload(client, ep["id"])
@@ -61,7 +65,7 @@ def test_delete_removes_everything_the_episode_owned(
     assert client.get(f"/episodes/{ep['id']}/history", headers=CHRIS).json() == []
     # the posting slot is free again
     again = client.post(
-        "/episodes", json={"title": "Next", "recorded_on": "2026-09-01"}, headers=ALBERT
+        "/episodes", json={"title": "Next", "recorded_on": RECORDED_ON}, headers=ALBERT
     ).json()
     assert date.fromisoformat(again["publish_on"]) == slot_date
 
@@ -104,7 +108,7 @@ def test_a_queued_job_for_a_deleted_episode_is_dropped_cleanly(
     ran = []
     monkeypatch.setattr(
         "edlo.jobs.transcribe.transcribe_file",
-        lambda path, checksum: ran.append(1) or FAKE,
+        lambda path, checksum, on_progress=None: ran.append(1) or FAKE,
     )
     ep = _registered(client)
     target = _upload(client, ep["id"])

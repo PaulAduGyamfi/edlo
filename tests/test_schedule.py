@@ -48,3 +48,23 @@ def test_next_free_slot_skips_taken_dates(db):
     first = svc.next_free_slot(after=TODAY)
     svc.assign(ep, first)
     assert svc.next_free_slot(after=TODAY) != first
+
+
+def test_reassigning_releases_the_old_slot(db):
+    from edlo.models import PostingSlot
+
+    svc = ScheduleService(db, today=TODAY)
+    a = Episode(title="A", recorded_on=TODAY)
+    b = Episode(title="B", recorded_on=TODAY)
+    db.add_all([a, b])
+    db.flush()
+    svc.assign(a, date(2026, 3, 15))
+    svc.assign(a, date(2026, 3, 22))
+    assert [s.slot_date for s in db.query(PostingSlot).filter_by(episode_id=a.id)] == [
+        date(2026, 3, 22)
+    ]
+    svc.assign(b, date(2026, 3, 15))  # the old date is free again
+    assert a.publish_on == date(2026, 3, 22) and b.publish_on == date(2026, 3, 15)
+    with pytest.raises(SlotTaken):
+        svc.assign(b, date(2026, 3, 22))
+    assert b.publish_on == date(2026, 3, 15)  # a refused move keeps the slot it had

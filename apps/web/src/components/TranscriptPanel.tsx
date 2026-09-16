@@ -16,6 +16,7 @@ import { useJob } from "../hooks/useJob";
 import { fmtTime } from "../lib/time";
 import { errorToast, useToast } from "../state/toast";
 import { Banner } from "./Banner";
+import { JobStatus } from "./JobStatus";
 import { ErrorDetail } from "./ErrorDetail";
 
 type State =
@@ -96,18 +97,7 @@ export function TranscriptPanel({ episodeId }: { episodeId: string }) {
         </Banner>
       );
     }
-    return (
-      <div className="tx-pending" role="status" aria-busy="true">
-        <span className="tx-pending-dot" aria-hidden="true" />
-        <div>
-          <strong>{job.status === "running" ? "Transcribing the rough mix…" : "Waiting for a worker…"}</strong>
-          <span className="tx-pending-sub">
-            A full episode takes a few minutes. You can close this tab; it carries on in the background.
-            {job.attempt > 1 ? ` Attempt ${job.attempt}.` : ""}
-          </span>
-        </div>
-      </div>
-    );
+    return <JobStatus job={job} doing="Transcribing the rough mix…" hint="On a CPU this runs at about the speed of the audio, so a 45-minute episode takes around 45 minutes. You can close this tab; it carries on in the background." />;
   }
   return <TranscriptView episodeId={episodeId} transcript={state.transcript} />;
 }

@@ -1,9 +1,10 @@
 import os
 import tempfile
+import time
 
 from edlo.db import get_sessionmaker
 from edlo.domain.roles import SYSTEM_ACTOR
-from edlo.jobs import PermanentFailure
+from edlo.jobs import PermanentFailure, progress
 from edlo.logging import log
 from edlo.models import AudioFile, Episode, Job, Transcript
 from edlo.services.workflow import WorkflowService
@@ -13,6 +14,7 @@ from edlo.transcription.engine import (
     MODEL_VERSION,
     AudioDecodeError,
     TranscriptTooShort,
+    model_loaded,
     transcribe_file,
 )
 
@@ -73,14 +75,33 @@ def transcribe_audio(payload: dict) -> None:
             prefix="edlo-audio-", suffix=".wav", dir=SCRATCH_DIR
         )
         os.close(fd)
+        progress(job_id, stage="downloading the audio")
         storage.download_to_path(key=key, dest=scratch)
         log.info(
             "audio_downloaded",
             audio_file_id=audio_file_id,
             size_mb=round(os.path.getsize(scratch) / 1024**2, 1),
         )
+        progress(
+            job_id,
+            stage="transcribing"
+            if model_loaded()
+            else "loading the speech model (about 15s, once per worker), then transcribing",
+        )
+        last_report = 0.0
+
+        def report(done_ms: int, total_ms: int) -> None:
+            # One row write every few seconds, not one per segment.
+            nonlocal last_report
+            if time.monotonic() - last_report < 5:
+                return
+            last_report = time.monotonic()
+            progress(
+                job_id, stage="transcribing", audio_done_ms=done_ms, audio_ms=total_ms
+            )
+
         try:
-            artifact = transcribe_file(scratch, checksum)
+            artifact = transcribe_file(scratch, checksum, on_progress=report)
         except (AudioDecodeError, TranscriptTooShort) as e:
             # A corrupt file is still corrupt on attempt three.
             raise PermanentFailure(str(e)) from e
@@ -92,6 +113,7 @@ def transcribe_audio(payload: dict) -> None:
         if scratch and os.path.exists(scratch):
             os.unlink(scratch)
 
+    progress(job_id, stage="saving the transcript")
     art_key = f"episodes/{episode_id}/transcript/{checksum[:32]}.json"
     fd, tmp = tempfile.mkstemp(
         prefix="edlo-transcript-", suffix=".json", dir=SCRATCH_DIR

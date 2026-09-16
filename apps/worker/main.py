@@ -159,7 +159,14 @@ def main() -> None:
     signal.signal(signal.SIGINT, _sigterm)
     queue = get_queue()
     sweep_scratch()
-    log.info("worker_started", worker=WORKER_ID, backend=get_settings().queue_backend)
+    s = get_settings()
+    log.info(
+        "worker_started",
+        worker=WORKER_ID,
+        backend=s.queue_backend,
+        ai="on" if s.ai_enabled else "off (AI_ENABLED is not true)",
+        model=f"{s.model_provider}:{s.model_name}" if s.ai_enabled else None,
+    )
     last_reconcile = time.monotonic()
     while not _shutdown.is_set():
         if time.monotonic() - last_reconcile > RECONCILE_EVERY:
@@ -176,7 +183,12 @@ def main() -> None:
             continue
         for m in messages:
             if _shutdown.is_set():
-                break  # do not start new work while draining
+                # Do not start new work while draining. A message that arrived
+                # in the same instant goes straight back: a lease of zero makes
+                # it visible to the next worker now, not after the timeout.
+                queue.extend_lease(m, 0)
+                log.info("message_returned_on_drain", job_id=m.payload.get("job_id"))
+                break
             process(queue, m)
     log.info("worker_stopped", worker=WORKER_ID)
 

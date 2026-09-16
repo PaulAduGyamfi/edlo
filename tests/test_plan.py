@@ -140,6 +140,15 @@ def test_grounded_plan_with_flags_cold_opens_and_checklist(
 
     plan = client.get(f"/episodes/{ep.id}/plan", headers=CHRIS).json()
     assert plan["status"] == "ready" and plan["windows"] == 1 and plan["proposed"] == 4
+    job = client.get(f"/jobs/{r.json()['job_id']}", headers=CHRIS).json()
+    assert job["progress"] == {
+        "stage": "saving the plan",
+        "windows_done": 1,
+        "windows": 1,
+    }
+    assert (
+        job["created_at"].endswith("Z") or "+00:00" in job["created_at"]
+    )  # aware, never naive
     assert plan["rejections"] == {
         "quote_not_in_transcript": 1,
         "quote_not_at_timecode": 1,

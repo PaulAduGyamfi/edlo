@@ -5,7 +5,8 @@ import { getJob, type JobView } from "../api/episodes";
 const TERMINAL = new Set(["succeeded", "dead"]);
 
 /**
- * Poll a job until it is done. Backs off 1s → 1.5s → 2.25s, capped at 10s:
+ * Poll a job until it is done. Backs off 1s → 1.5s → 2.25s, capped at 4s while
+ * running and 10s while queued:
  * polling every second forever is pointless load on the API and the database.
  * `onTerminal` fires once, from the poll itself, when the job finishes.
  */
@@ -37,7 +38,7 @@ export function useJob(jobId: string | null, onTerminal?: (job: JobView) => void
         terminal.current?.(latest);
         return;
       }
-      delay = Math.min(delay * 1.5, 10_000);
+      delay = Math.min(delay * 1.5, latest.status === "running" ? 4000 : 10_000);
       timer = setTimeout(poll, delay);
     }
 

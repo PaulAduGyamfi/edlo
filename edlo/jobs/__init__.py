@@ -9,6 +9,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from edlo import db as _db
+from edlo.logging import log
 from edlo.models import Job
 
 LEASE_SECONDS = 300
@@ -161,3 +163,17 @@ def stale_queued_jobs(
         .limit(100)
         .all()
     )
+
+
+def progress(job_id: str | None, **fields: object) -> None:
+    """Handlers call this as they go; the job view shows it. Never raises."""
+    if not job_id:
+        return
+    try:
+        with _db.get_sessionmaker()() as db:
+            job = db.get(Job, job_id)
+            if job is not None:
+                job.progress = {**(job.progress or {}), **fields}
+                db.commit()
+    except Exception as e:  # noqa: BLE001 - progress is a courtesy, not the work
+        log.warning("progress_not_saved", job_id=job_id, error=type(e).__name__)

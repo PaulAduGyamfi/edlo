@@ -30,6 +30,14 @@ data "aws_cloudfront_origin_request_policy" "all_viewer" {
   name = "Managed-AllViewer"
 }
 
+# Rewrites /api/<path> to /<path> on the way in. See functions/strip_api_prefix.js.
+resource "aws_cloudfront_function" "strip_api_prefix" {
+  name    = "edlo-strip-api-prefix-${var.environment}"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = file("${path.module}/functions/strip_api_prefix.js")
+}
+
 data "aws_iam_policy_document" "web_bucket" {
   statement {
     actions   = ["s3:GetObject"]
@@ -91,21 +99,17 @@ resource "aws_cloudfront_distribution" "web" {
     cached_methods           = ["GET", "HEAD"]
     cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
+
+    # The API has no /api prefix; drop it at the edge before the origin sees it.
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+    }
   }
 
-  # SPA fallback. Without these two blocks every deep link 404s, and only
-  # on the deployed site -- `vite dev` handles it for you locally.
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
-
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
+  # No custom error responses on purpose. They apply to every behaviour, so
+  # they would turn the API's own 403s and 404s into a 200 index.html. The app
+  # routes with the URL hash, so every deep link is served from / anyway.
 
   restrictions {
     geo_restriction {

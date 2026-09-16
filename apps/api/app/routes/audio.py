@@ -3,9 +3,11 @@ from pathlib import PurePosixPath
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from apps.api.app.deps import ActorDep, SessionDep
+from apps.api.app.idempotency import remember
 from apps.api.app.submit import replay, submit_job
 from edlo.config import get_settings
 from edlo.domain.roles import Role
@@ -14,6 +16,46 @@ from edlo.models import AudioFile, Episode
 from edlo.storage import get_storage
 
 router = APIRouter(prefix="/episodes", tags=["audio"])
+
+# "speech.wav" downloads as "speech_rough.wav" or "speech_final_mixed.wav".
+DOWNLOAD_SUFFIX = {"rough": "_rough", "final": "_final_mixed"}
+
+
+def download_name(row: AudioFile) -> str:
+    ext = PurePosixPath(row.storage_key).suffix
+    stem = PurePosixPath(row.filename).stem if row.filename else "audio"
+    return f"{stem}{DOWNLOAD_SUFFIX.get(row.kind, '')}{ext}"
+
+
+def _aware(dt: datetime | None) -> datetime | None:
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+@router.get("/{episode_id}/audio")
+def list_audio(episode_id: str, db: SessionDep, actor: ActorDep):
+    """The latest ready file of each kind, so the page shows what is there."""
+    rows = (
+        db.query(AudioFile)
+        .filter_by(episode_id=episode_id, status="ready")
+        .order_by(AudioFile.uploaded_at.desc())
+        .all()
+    )
+    latest: dict[str, AudioFile] = {}
+    for r in rows:
+        latest.setdefault(r.kind, r)
+    return [
+        {
+            "kind": r.kind,
+            "audio_file_id": r.id,
+            "filename": r.filename,
+            "download_name": download_name(r),
+            "size_bytes": r.size_bytes,
+            "uploaded_by": r.uploaded_by,
+            "uploaded_at": _aware(r.uploaded_at),
+            "first_downloaded_at": _aware(r.first_downloaded_at),
+        }
+        for r in latest.values()
+    ]
 
 
 class UploadRequest(BaseModel):
@@ -113,8 +155,21 @@ def complete_upload(
         row.uploaded_at = datetime.now(UTC)
         db.commit()
 
-    # One transcribe job per audio file, enforced by the unique constraint.
     log.info("audio_uploaded", episode_id=episode_id, kind=row.kind, actor=actor.id)
+    if row.kind != "rough":
+        # The plan is built from the rough mix. The final mix is the handoff
+        # itself: store it, say so, and queue nothing.
+        response = {
+            "audio_file_id": row.id,
+            "replayed": False,
+            "job_id": None,
+            "poll_url": None,
+        }
+        remember(db, idempotency_key or "", route, fp, response)
+        db.commit()
+        return JSONResponse(response, status_code=200)
+
+    # One transcribe job per audio file, enforced by the unique constraint.
     return submit_job(
         db,
         request,
@@ -152,7 +207,7 @@ def download_url(
             episode_id=episode_id,
             hours=(row.first_downloaded_at - uploaded).total_seconds() / 3600,
         )
-    filename = row.filename or f"{kind}{PurePosixPath(row.storage_key).suffix}"
+    filename = download_name(row)
     return {
         "url": get_storage().presign_download(
             key=row.storage_key, filename=filename, expires_in=900

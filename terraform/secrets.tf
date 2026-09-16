@@ -6,7 +6,8 @@ resource "aws_secretsmanager_secret" "app" {
 resource "aws_secretsmanager_secret_version" "app" {
   secret_id = aws_secretsmanager_secret.app.id
   secret_string = jsonencode({
-    DATABASE_URL = "postgresql+psycopg://edlo:${random_password.db.result}@${aws_db_instance.main.endpoint}/edlo"
+    DATABASE_URL  = "postgresql+psycopg://edlo:${random_password.db.result}@${aws_db_instance.main.endpoint}/edlo"
+    MODEL_API_KEY = var.model_api_key
   })
 }
 

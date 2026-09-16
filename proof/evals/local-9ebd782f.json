@@ -1,0 +1,87 @@
+{
+  "label": "local",
+  "commit_sha": "9ebd782fb39d1c029ab9173e93677ccc2226db39",
+  "dataset_version": "0ea79c17eb92",
+  "model": "mock",
+  "prompt_versions": {
+    "cutlist": "cutlist-v1",
+    "pack": "pack-v1"
+  },
+  "cases": 12,
+  "per_check": {
+    "grounded_quotes": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "quotes_at_cited_timecode": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "human_flags_preserved": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "timecodes_in_range": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "cut_cap_respected": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "no_invented_links_or_sponsors": {
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0
+    },
+    "expected_rejections": {
+      "passed": 5,
+      "total": 5,
+      "rate": 1.0
+    },
+    "expected_kept_cuts": {
+      "passed": 11,
+      "total": 11,
+      "rate": 1.0
+    },
+    "expected_cold_opens": {
+      "passed": 9,
+      "total": 9,
+      "rate": 1.0
+    }
+  },
+  "per_bucket": {
+    "adversarial_transcript": {
+      "passed": 2,
+      "total": 2
+    },
+    "clean_conversation": {
+      "passed": 2,
+      "total": 2
+    },
+    "human_flags_present": {
+      "passed": 2,
+      "total": 2
+    },
+    "messy_speech": {
+      "passed": 2,
+      "total": 2
+    },
+    "no_strong_cold_open": {
+      "passed": 2,
+      "total": 2
+    },
+    "sensitive_topic": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "failures": [],
+  "release_blocked": false,
+  "blocked_by": []
+}

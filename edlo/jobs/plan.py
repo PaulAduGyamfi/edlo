@@ -19,7 +19,7 @@ from edlo.ai.schemas import Candidate, ColdOpenCandidate, ColdOpenProposal, CutP
 from edlo.config import get_settings
 from edlo.db import get_sessionmaker
 from edlo.domain.roles import SYSTEM_ACTOR
-from edlo.jobs import PermanentFailure
+from edlo.jobs import PermanentFailure, progress
 from edlo.logging import log
 from edlo.models import ColdOpen, CutItem, Episode, Flag, Plan, PlanStep, Transcript
 from edlo.services.workflow import WorkflowService
@@ -61,11 +61,17 @@ def load_transcript(episode_id: str) -> tuple[Transcript, TranscriptArtifact]:
 
 
 async def _propose(
-    gateway: ModelGateway, wins: list[W.Window], prompt_version: str
+    gateway: ModelGateway,
+    wins: list[W.Window],
+    prompt_version: str,
+    job_id: str | None = None,
 ) -> tuple[list[Candidate], list[ColdOpenCandidate]]:
     cuts: list[Candidate] = []
     colds: list[ColdOpenCandidate] = []
     for w in wins:
+        progress(
+            job_id, stage="asking the model", windows_done=w.index, windows=len(wins)
+        )
         text = W.render(w)
         try:
             cp = await gateway.structured(
@@ -91,8 +97,10 @@ async def _propose(
 
 def generate_plan(payload: dict) -> None:
     episode_id = payload["episode_id"]
+    job_id = payload.get("job_id")
     s = get_settings()
     Session = get_sessionmaker()
+    progress(job_id, stage="loading the transcript")
     _, artifact = load_transcript(episode_id)
 
     with Session() as db:
@@ -106,18 +114,25 @@ def generate_plan(payload: dict) -> None:
     wins = W.make_windows(artifact)
     if s.ai_enabled:
         cuts, colds = asyncio.run(
-            _propose(get_gateway(), wins, s.prompt_cutlist_version)
+            _propose(get_gateway(), wins, s.prompt_cutlist_version, job_id)
         )
         status, model = "ready", s.model_name or s.model_provider
     else:
         cuts, colds, status, model = [], [], "ai_disabled", ""
 
+    progress(
+        job_id,
+        stage="checking every quote against the transcript",
+        windows_done=len(wins),
+        windows=len(wins),
+    )
     items, rejected = merge(flags, cuts, artifact, cap=s.max_cuts)
     kept_colds, rejected_colds = validate(
         colds, artifact, max_items=s.max_cold_opens, max_span_ms=60_000
     )
     rejections = Counter(r.rule for r in rejected + rejected_colds)
 
+    progress(job_id, stage="saving the plan")
     with Session() as db:
         # Regenerating replaces the previous plan.
         for model_cls in (CutItem, ColdOpen, Plan):

@@ -125,7 +125,8 @@ def test_worker_transcribes_and_moves_the_episode(
     client, db, local_storage, queue, monkeypatch
 ):
     monkeypatch.setattr(
-        "edlo.jobs.transcribe.transcribe_file", lambda path, checksum: FAKE
+        "edlo.jobs.transcribe.transcribe_file",
+        lambda path, checksum, on_progress=None: FAKE,
     )
     ep = _episode(db)
     target = _upload(client, ep.id)
@@ -148,7 +149,7 @@ def test_worker_transcribes_and_moves_the_episode(
 def test_corrupt_audio_is_a_dead_job_with_a_user_message(
     client, db, local_storage, queue, monkeypatch
 ):
-    def boom(path, checksum):
+    def boom(path, checksum, on_progress=None):
         raise AudioDecodeError("could not decode audio: Nope")
 
     monkeypatch.setattr("edlo.jobs.transcribe.transcribe_file", boom)
@@ -176,11 +177,17 @@ def test_download_keeps_the_uploaded_filename(client, db, local_storage, queue):
     _complete(client, ep.id, target)
 
     dl = client.get(f"/episodes/{ep.id}/audio/rough/download-url", headers=CHRIS).json()
-    assert dl["filename"] == "Ep 42 rough mix.wav"  # directories stripped, name kept
+    assert (
+        dl["filename"] == "Ep 42 rough mix_rough.wav"
+    )  # directories stripped, kind appended
     got = client.get(dl["url"])
     assert got.status_code == 200
     # Starlette writes non-token names RFC 5987 style; browsers decode it.
-    assert "Ep 42 rough mix.wav" in unquote(got.headers["content-disposition"])
+    assert "Ep 42 rough mix_rough.wav" in unquote(got.headers["content-disposition"])
+    listed = client.get(f"/episodes/{ep.id}/audio", headers=CHRIS).json()
+    assert [(a["kind"], a["download_name"], a["uploaded_by"]) for a in listed] == [
+        ("rough", "Ep 42 rough mix_rough.wav", "u_albert")
+    ]
 
 
 def test_playback_url_does_not_stamp_the_handoff(client, db, local_storage, queue):
@@ -205,7 +212,8 @@ def test_transcript_requires_a_bearer(client):
 
 def test_transcript_row_is_written_by_the_worker(db, local_storage, queue, monkeypatch):
     monkeypatch.setattr(
-        "edlo.jobs.transcribe.transcribe_file", lambda path, checksum: FAKE
+        "edlo.jobs.transcribe.transcribe_file",
+        lambda path, checksum, on_progress=None: FAKE,
     )
     ep = _episode(db)
     key = local_storage.new_key(episode_id=ep.id, kind="rough", filename="a.wav")
@@ -230,3 +238,52 @@ def test_transcript_row_is_written_by_the_worker(db, local_storage, queue, monke
     row = db.query(Transcript).filter_by(audio_file_id=audio.id).one()
     assert (row.segment_count, row.duration_ms) == (3, 10_000)
     assert local_storage.head(row.storage_key) is not None
+
+
+def test_final_mix_is_stored_but_not_transcribed(client, db, local_storage, queue):
+    ep = _episode(db)
+    target = client.post(
+        f"/episodes/{ep.id}/audio/upload-target",
+        json={
+            "kind": "final",
+            "filename": "mix v3.wav",
+            "content_type": "audio/wav",
+            "size_bytes": 1,
+        },
+        headers=ALBERT,
+    ).json()
+    assert (
+        client.put(target["url"], content=DATA, headers=target["headers"]).status_code
+        == 204
+    )
+    r = _complete(client, ep.id, target)
+    assert r.status_code == 200 and r.json()["job_id"] is None
+    assert queue.depth() == 0 and db.query(Job).count() == 0
+    dl = client.get(f"/episodes/{ep.id}/audio/final/download-url", headers=CHRIS).json()
+    assert dl["filename"] == "mix v3_final_mixed.wav"
+
+
+def test_transcription_progress_is_visible(
+    client, db, local_storage, queue, monkeypatch
+):
+    """A 43-minute episode takes about that long on a CPU; the job says how far it is."""
+    from apps.worker.main import process
+
+    ep = _episode(db)
+    job_id = _complete(client, ep.id, _upload(client, ep.id)).json()["job_id"]
+
+    def engine(path, checksum, on_progress=None):
+        on_progress(1500, 3000)
+        return FAKE
+
+    monkeypatch.setattr("edlo.jobs.transcribe.transcribe_file", engine)
+    (m,) = queue.receive(wait_seconds=0)
+    process(queue, m)
+    db.expire_all()
+    job = db.get(Job, job_id)
+    assert job.status == "succeeded"
+    assert job.progress == {
+        "stage": "saving the transcript",
+        "audio_done_ms": 1500,
+        "audio_ms": 3000,
+    }

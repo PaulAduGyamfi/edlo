@@ -26,3 +26,16 @@ variable "web_origin" {
   type        = string
   description = "Browser origin allowed to upload directly to the media bucket (bucket CORS)."
 }
+
+# Supply at apply time: `TF_VAR_model_api_key=sk-ant-... terraform apply`.
+# Never put it in a tfvars file. Empty means AI stays off.
+variable "model_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "model_name" {
+  type    = string
+  default = "claude-sonnet-5"
+}

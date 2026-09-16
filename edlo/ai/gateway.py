@@ -29,6 +29,18 @@ class ModelGateway(Protocol):
     ) -> T: ...
 
 
+def classify(e: Exception) -> Exception:
+    """Transient (retry) or structural (do not loop)? Same rule for every provider."""
+    if isinstance(e, TimeoutError) or type(e).__name__ == "APITimeoutError":
+        return ModelTimeout(str(e))
+    status = getattr(e, "status_code", None)
+    if status in (429, 500, 502, 503, 504, 529) or status is None:
+        return ModelUnavailable(f"{type(e).__name__}: {status}")
+    if status == 401:
+        return ModelInvalidOutput("non-retryable: 401 (is MODEL_API_KEY right?)")
+    return ModelInvalidOutput(f"non-retryable: {status}")
+
+
 class MockGateway:
     """
     The DEFAULT everywhere except production. Deterministic, offline, free.
@@ -125,16 +137,92 @@ class OpenAICompatibleGateway:
                 )
                 continue
 
-            except TimeoutError as e:
-                last = ModelTimeout(str(e))
-            except Exception as e:  # classified below: transient or structural
-                status = getattr(e, "status_code", None)
-                if status in (429, 500, 502, 503, 504) or status is None:
-                    last = ModelUnavailable(f"{type(e).__name__}: {status}")
-                else:
-                    raise ModelInvalidOutput(f"non-retryable: {status}") from e
+            except Exception as e:  # transient or structural, decided in one place
+                last = classify(e)
+                if isinstance(last, ModelInvalidOutput):
+                    raise last from e
 
             # FULL jitter, not plain exponential backoff.
+            await asyncio.sleep(random.uniform(0, 2**attempt))
+
+        raise last or ModelUnavailable("exhausted attempts")
+
+
+class AnthropicGateway:
+    """
+    Claude through the Messages API. The schema goes with the request
+    (`output_format`), so the API constrains the output to it and the SDK
+    hands back the parsed model. Same retry rules and logging discipline as
+    the OpenAI-compatible gateway; the plan code cannot tell them apart.
+    """
+
+    def __init__(self, api_key, model, timeout_seconds, client=None):
+        if client is None:
+            from anthropic import AsyncAnthropic
+
+            # max_retries=0 for the same reason as above: own the loop.
+            client = AsyncAnthropic(
+                api_key=api_key or None, timeout=timeout_seconds, max_retries=0
+            )
+        self.client = client
+        self.model = model
+
+    async def structured(self, *, system, user, output_type, prompt_version):
+        last: Exception | None = None
+
+        for attempt in range(2):
+            started = time.perf_counter()
+            try:
+                r = await self.client.messages.parse(
+                    model=self.model,
+                    max_tokens=8192,
+                    system=system,
+                    messages=[{"role": "user", "content": user}],
+                    output_format=output_type,
+                )
+                parsed = r.parsed_output
+                if parsed is None:
+                    # Cut off (max_tokens) or refused: no JSON to validate.
+                    raise ModelInvalidOutput(
+                        f"no structured output (stop_reason={getattr(r, 'stop_reason', None)})"
+                    )
+                usage = getattr(r, "usage", None)
+                log.info(
+                    "ai_call",
+                    model=self.model,
+                    prompt_version=prompt_version,
+                    request_id=getattr(r, "id", None),
+                    prompt_tokens=getattr(usage, "input_tokens", None),
+                    completion_tokens=getattr(usage, "output_tokens", None),
+                    output_type=output_type.__name__,
+                    attempt=attempt,
+                    duration_ms=round((time.perf_counter() - started) * 1000),
+                )
+                return parsed
+
+            except (ValidationError, ModelInvalidOutput) as e:
+                # One corrective retry, exactly like the other gateway.
+                last = (
+                    e
+                    if isinstance(e, ModelInvalidOutput)
+                    else ModelInvalidOutput(
+                        f"schema violation: {e.error_count()} errors"
+                    )
+                )
+                log.warning(
+                    "ai_invalid_output", attempt=attempt, version=prompt_version
+                )
+                user += (
+                    "\n\nYour previous response did not match the schema. "
+                    "Return only valid JSON matching it exactly."
+                )
+                continue
+
+            except Exception as e:
+                last = classify(e)
+                if isinstance(last, ModelInvalidOutput):
+                    raise last from e
+
             await asyncio.sleep(random.uniform(0, 2**attempt))
 
         raise last or ModelUnavailable("exhausted attempts")
@@ -146,6 +234,8 @@ def get_gateway() -> ModelGateway:
         raise AIDisabled("AI is disabled by configuration")
     if s.model_provider == "mock":
         return MockGateway()
+    if s.model_provider == "anthropic":
+        return AnthropicGateway(s.model_api_key, s.model_name, s.model_timeout_seconds)
     return OpenAICompatibleGateway(
         s.model_base_url, s.model_api_key, s.model_name, s.model_timeout_seconds
     )

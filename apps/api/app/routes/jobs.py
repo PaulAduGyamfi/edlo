@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -29,8 +30,17 @@ class JobView(BaseModel):
     error_class: str | None = None
     user_message: str | None = None
     created_at: datetime
+    started_at: datetime | None = None
     finished_at: datetime | None = None
+    worker: str | None = None  # who holds the lease
+    progress: dict[str, Any] | None = None  # what the worker says it is doing
     queue_position: int | None = None  # backpressure, communicated
+
+
+def _aware(dt: datetime | None) -> datetime | None:
+    """SQLite hands back naive datetimes. They were written as UTC, and a
+    browser parsing a naive ISO string would assume local time."""
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 def job_view(job: Job, position: int | None = None) -> JobView:
@@ -45,8 +55,11 @@ def job_view(job: Job, position: int | None = None) -> JobView:
         attempt=job.attempt,
         error_class=job.error_class,
         user_message=message,
-        created_at=job.created_at,
-        finished_at=job.finished_at,
+        created_at=_aware(job.created_at) or job.created_at,
+        started_at=_aware(job.started_at),
+        finished_at=_aware(job.finished_at),
+        worker=job.lease_owner,
+        progress=job.progress,
         queue_position=position,
     )
 

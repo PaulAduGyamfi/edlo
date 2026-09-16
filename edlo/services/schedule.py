@@ -32,6 +32,11 @@ class ScheduleService:
     def assign(self, episode: Episode, slot_date: date) -> PostingSlot:
         if slot_date < self.today:
             raise SlotInPast(f"{slot_date} is in the past")
+        # One episode, one slot: release whatever it held before. A failed
+        # insert rolls this back too, so a taken date leaves the old slot intact.
+        self.db.query(PostingSlot).filter_by(episode_id=episode.id).delete(
+            synchronize_session=False
+        )
         slot = PostingSlot(slot_date=slot_date, episode_id=episode.id)
         self.db.add(slot)
         try:

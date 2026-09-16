@@ -8,6 +8,7 @@ import { type Episode, useEpisodes } from "../state/episodes";
 import { useMe } from "../state/session";
 import { errorToast, useToast } from "../state/toast";
 import { Banner } from "./Banner";
+import { JobStatus } from "./JobStatus";
 import { ErrorDetail } from "./ErrorDetail";
 
 type State =
@@ -131,15 +132,7 @@ export function PublishPanel({ episode }: { episode: Episode }) {
         </Banner>
       );
     }
-    return (
-      <div className="tx-pending" role="status" aria-busy="true">
-        <span className="tx-pending-dot" aria-hidden="true" />
-        <div>
-          <strong>{job.status === "running" ? "Drafting the pack…" : "Waiting for a worker…"}</strong>
-          <span className="tx-pending-sub">You can close this tab.</span>
-        </div>
-      </div>
-    );
+    return <JobStatus job={job} doing="Drafting the pack…" hint="You can close this tab." />;
   }
 
   const { pack } = state;

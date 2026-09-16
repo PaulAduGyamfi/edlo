@@ -54,3 +54,13 @@ def test_receive_respects_the_batch_cap(queue):
         queue.enqueue("transcribe", {"i": i})
     assert len(queue.receive(max_messages=2, wait_seconds=0)) == 2
     assert queue.depth() == 1
+
+
+def test_a_zero_lease_hands_the_message_straight_back(queue):
+    """What a draining worker does with a message it received but will not run."""
+    queue.enqueue("plan", {"job_id": "j1"})
+    (m,) = queue.receive(wait_seconds=0)
+    assert queue.receive(wait_seconds=0) == []  # in flight: invisible to others
+    queue.extend_lease(m, 0)
+    (again,) = queue.receive(wait_seconds=0)
+    assert again.payload == {"job_id": "j1"}

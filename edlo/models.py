@@ -164,6 +164,8 @@ class Job(Base):
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_class: Mapped[str | None] = mapped_column(String(128), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # What the worker is doing right now, for the person waiting on it.
+    progress: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(128))
     attempt: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)

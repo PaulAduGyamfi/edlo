@@ -21,6 +21,7 @@ import { type Episode, useEpisodes } from "../state/episodes";
 import { useMe } from "../state/session";
 import { errorToast, useToast } from "../state/toast";
 import { Banner } from "./Banner";
+import { JobStatus } from "./JobStatus";
 import { ErrorDetail } from "./ErrorDetail";
 
 type State =
@@ -142,15 +143,7 @@ export function PlanPanel({ episode }: { episode: Episode }) {
         </Banner>
       );
     }
-    return (
-      <div className="tx-pending" role="status" aria-busy="true">
-        <span className="tx-pending-dot" aria-hidden="true" />
-        <div>
-          <strong>{job.status === "running" ? "Building the plan…" : "Waiting for a worker…"}</strong>
-          <span className="tx-pending-sub">One model call per five-minute window. You can close this tab.</span>
-        </div>
-      </div>
-    );
+    return <JobStatus job={job} doing="Building the plan…" hint="One model call per five-minute window. You can close this tab." />;
   }
 
   const { plan } = state;
@@ -171,8 +164,9 @@ export function PlanPanel({ episode }: { episode: Episode }) {
     <div className="plan">
       {plan.status === "ai_disabled" ? (
         <Banner kind="info">
-          AI suggestions are turned off. The workflow is running normally: moments flagged in the transcript are the
-          cut list.
+          AI suggestions are turned off: the worker that built this plan had <code>AI_ENABLED</code> unset or false.
+          The workflow is running normally, with the moments flagged in the transcript as the cut list. To get
+          proposals, set <code>AI_ENABLED=true</code> in <code>.env</code>, restart the worker, and rebuild the plan.
         </Banner>
       ) : (
         <p className="plan-meta">

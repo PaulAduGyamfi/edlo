@@ -61,7 +61,7 @@ def test_duplicate_delivery_does_not_duplicate_work(
 
     calls = []
     monkeypatch.setattr(
-        "edlo.jobs.transcribe.transcribe_file", lambda *a: calls.append(a) or FAKE
+        "edlo.jobs.transcribe.transcribe_file", lambda *a, **k: calls.append(a) or FAKE
     )
     ep = _episode(db)
     audio = _ready_audio(db, local_storage, ep)
@@ -85,7 +85,7 @@ def test_identical_bytes_reuse_the_transcript(db, local_storage, queue, monkeypa
 
     calls = []
     monkeypatch.setattr(
-        "edlo.jobs.transcribe.transcribe_file", lambda *a: calls.append(a) or FAKE
+        "edlo.jobs.transcribe.transcribe_file", lambda *a, **k: calls.append(a) or FAKE
     )
     first, second = _episode(db), _episode(db)
     a1 = _ready_audio(db, local_storage, first)

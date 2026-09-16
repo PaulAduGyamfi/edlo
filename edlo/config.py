@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,15 +33,27 @@ class Settings(BaseSettings):
     sqs_wait_time_seconds: int = 20
     # --- AI ---
     ai_enabled: bool = False
-    model_provider: Literal["mock", "openai_compatible"] = "mock"
+    model_provider: Literal["mock", "openai_compatible", "anthropic"] = "mock"
     model_name: str = ""
-    model_base_url: str = ""
-    model_api_key: str = ""
+    model_base_url: str = ""  # openai_compatible only
+    model_api_key: str = ""  # the one place the key goes; never in code or logs
     model_timeout_seconds: int = 45
     prompt_cutlist_version: str = "cutlist-v1"
     prompt_pack_version: str = "pack-v1"
     max_cuts: int = 12
     max_cold_opens: int = 5
+
+    @model_validator(mode="after")
+    def _ai_needs_a_key(self):
+        if self.ai_enabled and self.model_provider != "mock":
+            if not self.model_api_key:
+                raise ValueError(
+                    "AI_ENABLED=true needs MODEL_API_KEY (.env locally, Secrets Manager in production)"
+                )
+            if self.model_provider == "anthropic" and not self.model_name:
+                self.model_name = "claude-sonnet-5"
+        return self
+
     # --- auth ---
     auth_mode: Literal["pilot_token", "oidc"] = "pilot_token"
     oidc_issuer: str = ""

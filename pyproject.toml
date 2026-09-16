@@ -10,7 +10,7 @@ dependencies = [
     "fastapi", "uvicorn[standard]", "pydantic-settings", 
     "sqlalchemy>=2", "alembic", "psycopg[binary]", 
     "python-multipart", "redis", "structlog",
-    "openai", "boto3"
+    "openai", "anthropic", "boto3"
 ]
 
 [project.optional-dependencies]

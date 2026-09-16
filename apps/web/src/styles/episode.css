@@ -271,7 +271,8 @@
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr), not 1fr: a long episode tag must not push a column wider than the panel. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -292,6 +293,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
   min-height: 44px;
   padding: 5px 6px;
   font: 500 11.5px/1 var(--sans);
@@ -1039,4 +1042,100 @@
 .chapters {
   margin: 0;
   padding-left: 18px;
+}
+
+
+/* ---------- background job status ---------- */
+
+.job {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.job .tx-pending-dot {
+  margin-top: 4px;
+}
+
+.job-stalled .tx-pending-dot {
+  background: var(--yellow);
+  animation: none;
+}
+
+.job-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+  min-width: 0;
+}
+
+.job-line {
+  font: 500 11px/1.5 var(--mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.job-hint {
+  font-size: 12px;
+  color: var(--yellow);
+}
+
+.job-hint code {
+  font: 500 11px/1 var(--mono);
+  padding: 2px 5px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+
+.job-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.job-progress .progress {
+  flex: 1;
+  margin-top: 0;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.job-progress .progress i {
+  transition: width 600ms ease-out;
+}
+
+/* No number to show yet: a bar that sweeps, so running never looks frozen. */
+.progress-busy i {
+  width: 30%;
+  animation: progress-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+.job-percent {
+  font: 600 11px/1 var(--mono);
+  color: var(--muted);
+  min-width: 3ch;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-busy i {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
 }

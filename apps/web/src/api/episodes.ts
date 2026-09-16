@@ -70,9 +70,22 @@ export type UploadTarget = {
 export type UploadResult = {
   audio_file_id: string;
   replayed: boolean;
-  job_id: string;
-  poll_url: string;
+  job_id: string | null; // the transcription job for a rough mix; null for a final mix
+  poll_url: string | null;
 };
+
+export type AudioRow = {
+  kind: AudioKind;
+  audio_file_id: string;
+  filename: string | null;
+  download_name: string;
+  size_bytes: number | null;
+  uploaded_by: string;
+  uploaded_at: string;
+  first_downloaded_at: string | null;
+};
+
+export const listAudio = (id: string) => api<AudioRow[]>(`/episodes/${id}/audio`);
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 
@@ -85,7 +98,17 @@ export type JobView = {
   error_class: string | null;
   user_message: string | null; // only for dead jobs
   created_at: string;
+  started_at: string | null;
   finished_at: string | null;
+  worker: string | null;
+  progress: {
+    stage?: string;
+    windows_done?: number;
+    windows?: number;
+    audio_done_ms?: number; // transcription: how much of the audio is done
+    audio_ms?: number;
+  } | null;
+  queue_position: number | null;
 };
 
 export const getJob = (id: string) => api<JobView>(`/jobs/${id}`);

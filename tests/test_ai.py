@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from edlo.ai import windows as W
 from edlo.ai.gateway import (
     AIDisabled,
+    AnthropicGateway,
     MockGateway,
     ModelInvalidOutput,
     ModelUnavailable,
@@ -243,6 +244,72 @@ def test_non_retryable_status_is_structural():
     with pytest.raises(ModelInvalidOutput):
         _run(OpenAICompatibleGateway("", "k", "m", 1, client=client))
     assert client.chat.completions.calls == 1
+
+
+class FakeMessages:
+    """Stands in for anthropic.AsyncAnthropic().messages."""
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.calls = 0
+
+    async def parse(self, **kwargs):
+        self.calls += 1
+        assert kwargs["output_format"] is Out and kwargs["system"] == "s"
+        item = self.script.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return SimpleNamespace(
+            id="msg",
+            stop_reason="end_turn",
+            parsed_output=item,
+            usage=SimpleNamespace(input_tokens=1, output_tokens=1),
+        )
+
+
+def anthropic_client(script):
+    return SimpleNamespace(messages=FakeMessages(script))
+
+
+def test_anthropic_gateway_returns_the_parsed_model(monkeypatch):
+    monkeypatch.setattr("edlo.ai.gateway.random.uniform", lambda a, b: 0)
+    client = anthropic_client([Out(n=7)])
+    assert _run(AnthropicGateway("k", "claude-sonnet-5", 1, client=client)).n == 7
+    # cut off or refused: one corrective retry, then structural failure
+    client = anthropic_client([None, None, Out(n=1)])
+    with pytest.raises(ModelInvalidOutput):
+        _run(AnthropicGateway("k", "m", 1, client=client))
+    assert client.messages.calls == 2
+    # overloaded (Anthropic's 529) is transient
+    overloaded = type("OL", (Exception,), {"status_code": 529})()
+    client = anthropic_client([overloaded, Out(n=3)])
+    assert _run(AnthropicGateway("k", "m", 1, client=client)).n == 3
+    # a bad key is not retried, and the message says what to check
+    unauthorized = type("UA", (Exception,), {"status_code": 401})()
+    with pytest.raises(ModelInvalidOutput, match="MODEL_API_KEY"):
+        _run(AnthropicGateway("k", "m", 1, client=anthropic_client([unauthorized])))
+
+
+def test_anthropic_is_selected_by_settings(monkeypatch):
+    s = get_settings()
+    monkeypatch.setattr(s, "ai_enabled", True)
+    monkeypatch.setattr(s, "model_provider", "anthropic")
+    monkeypatch.setattr(s, "model_api_key", "k")
+    monkeypatch.setattr(s, "model_name", "claude-sonnet-5")
+    gw = get_gateway()
+    assert isinstance(gw, AnthropicGateway) and gw.model == "claude-sonnet-5"
+
+
+def test_ai_on_without_a_key_fails_at_startup(monkeypatch):
+    from edlo.config import Settings
+
+    monkeypatch.setenv("AI_ENABLED", "true")
+    monkeypatch.setenv("MODEL_PROVIDER", "anthropic")
+    monkeypatch.setenv("MODEL_API_KEY", "")
+    with pytest.raises(ValueError, match="MODEL_API_KEY"):
+        Settings(_env_file=None)
+    monkeypatch.setenv("MODEL_API_KEY", "k")
+    assert Settings(_env_file=None).model_name == "claude-sonnet-5"  # the default model
 
 
 # ---- policy (chapter 22)

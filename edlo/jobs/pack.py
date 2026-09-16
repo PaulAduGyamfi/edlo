@@ -8,7 +8,7 @@ from edlo.ai.prompts import pack_v1
 from edlo.ai.schemas import PublishingPackDraft
 from edlo.config import get_settings
 from edlo.db import get_sessionmaker
-from edlo.jobs import PermanentFailure
+from edlo.jobs import PermanentFailure, progress
 from edlo.jobs.plan import load_transcript
 from edlo.logging import log
 from edlo.models import Episode, PublishingPack
@@ -17,13 +17,19 @@ from edlo.services.policy import check_pack
 
 def generate_pack(payload: dict) -> None:
     episode_id = payload["episode_id"]
+    job_id = payload.get("job_id")
     s = get_settings()
     Session = get_sessionmaker()
     with Session() as db:
         ep = db.get(Episode, episode_id)
     if ep is None:
         raise PermanentFailure("episode is gone")
+    progress(job_id, stage="loading the transcript")
     _, artifact = load_transcript(episode_id)
+    progress(
+        job_id,
+        stage="drafting the copy" if s.ai_enabled else "AI is off: using the title",
+    )
 
     if s.ai_enabled:
         text = "\n".join(W.render(w) for w in W.make_windows(artifact, overlap_ms=0))

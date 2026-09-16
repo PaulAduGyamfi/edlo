@@ -44,10 +44,15 @@ resource "aws_ecs_task_definition" "worker" {
       { name = "S3_REGION", value = var.region },
       { name = "QUEUE_BACKEND", value = "sqs" },
       { name = "SQS_QUEUE_URL", value = aws_sqs_queue.jobs.url },
+      { name = "AI_ENABLED", value = var.model_api_key != "" ? "true" : "false" },
+      { name = "MODEL_PROVIDER", value = "anthropic" },
+      { name = "MODEL_NAME", value = var.model_name },
     ]
     secrets = [
       { name = "DATABASE_URL"
       valueFrom = "${aws_secretsmanager_secret.app.arn}:DATABASE_URL::" },
+      { name = "MODEL_API_KEY"
+      valueFrom = "${aws_secretsmanager_secret.app.arn}:MODEL_API_KEY::" },
     ]
 
     logConfiguration = {
