@@ -151,7 +151,7 @@ resource "aws_appautoscaling_policy" "worker_backlog" {
       metrics {
         id          = "backlog_per_task"
         label       = "Visible messages per running worker"
-        expression  = "visible / MAX([running, 1])"
+        expression  = "visible / IF(running > 0, running, 1)"
         return_data = true
       }
     }

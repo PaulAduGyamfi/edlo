@@ -22,10 +22,6 @@ variable "github_repo" {
   type        = string
   description = "The repo portion of the OIDC subject claim, including GitHub's numeric owner and repo IDs (e.g. owner@123/repo@456). Decode the token in a workflow run to find it."
 }
-variable "web_origin" {
-  type        = string
-  description = "Browser origin allowed to upload directly to the media bucket (bucket CORS)."
-}
 
 # Supply at apply time: `TF_VAR_model_api_key=sk-ant-... terraform apply`.
 # Never put it in a tfvars file. Empty means AI stays off.

@@ -41,7 +41,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
 resource "aws_s3_bucket_cors_configuration" "media" {
   bucket = aws_s3_bucket.media.id
   cors_rule {
-    allowed_origins = [var.web_origin]
+   allowed_origins = [
+      "https://${aws_cloudfront_distribution.web.domain_name}",
+      "http://localhost:5173",
+    ]
     allowed_methods = ["POST", "PUT", "GET", "HEAD"]
     allowed_headers = ["*"]
     # Without ExposeHeaders the browser cannot READ the checksum, so the
